@@ -111,6 +111,8 @@ const shapeSymbol: Record<Shape, string> = {
   sticker: "▣",
 };
 const privacyStickers = [
+  "mosaic",
+  "🕶️",
   "🦊",
   "🐼",
   "🐱",
@@ -133,13 +135,12 @@ function App() {
     [custom, setCustom] = useState({ width: 1080, height: 1080 });
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
-    [mode, setMode] = useState<"crop" | "fit">("crop");
+    [mode, setMode] = useState<"crop" | "fit">("fit");
   const [shape, setShape] = useState<Shape>("original"),
     [zoom, setZoom] = useState(1),
     [rotation, setRotation] = useState(0),
     [flipX, setFlipX] = useState(false),
-    [flipY, setFlipY] = useState(false),
-    [mosaic, setMosaic] = useState(false);
+    [flipY, setFlipY] = useState(false);
   const [measure, setMeasure] = useState(false),
     [unit, setUnit] = useState<"cm" | "in">("cm"),
     [dims, setDims] = useState({ width: "60", height: "40", depth: "20" }),
@@ -173,7 +174,7 @@ function App() {
   const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
     [expandStrength, setExpandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
-    [stickerSize, setStickerSize] = useState(18),
+    [stickerSize, setStickerSize] = useState(30),
     [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
     [placingSticker, setPlacingSticker] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
@@ -272,7 +273,6 @@ function App() {
     setRotation(0);
     setFlipX(false);
     setFlipY(false);
-    setMosaic(false);
     setShape("original");
     setAdjust({
       brightness: 100,
@@ -441,15 +441,27 @@ function App() {
     width: number,
     height: number,
   ) {
-    if (!mosaic) return;
-    const image = ctx.getImageData(0, 0, width, height),
-      block = Math.max(8, Math.round(width / 90));
-    for (let y = 0; y < height; y += block)
-      for (let x = 0; x < width; x += block) {
+    if (privacySticker !== "mosaic") return;
+    const size = Math.max(36, (width * stickerSize) / 100),
+      centerX = stickerPosition.x * width,
+      centerY = stickerPosition.y * height,
+      left = Math.max(0, Math.round(centerX - size / 2)),
+      top = Math.max(0, Math.round(centerY - size / 2)),
+      right = Math.min(width, Math.round(centerX + size / 2)),
+      bottom = Math.min(height, Math.round(centerY + size / 2)),
+      image = ctx.getImageData(0, 0, width, height),
+      block = Math.max(10, Math.round(size / 11));
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(left, top, right - left, bottom - top, size * 0.08);
+    ctx.clip();
+    for (let y = top; y < bottom; y += block)
+      for (let x = left; x < right; x += block) {
         const index = (y * width + x) * 4;
         ctx.fillStyle = `rgba(${image.data[index]},${image.data[index + 1]},${image.data[index + 2]},${image.data[index + 3] / 255})`;
         ctx.fillRect(x, y, block, block);
       }
+    ctx.restore();
   }
   function drawAnnotations(
     ctx: CanvasRenderingContext2D,
@@ -543,7 +555,7 @@ function App() {
     width: number,
     height: number,
   ) {
-    if (!privacySticker) return;
+    if (!privacySticker || privacySticker === "mosaic") return;
     ctx.save();
     const size = Math.max(28, (width * stickerSize) / 100);
     ctx.font = `${size}px "Segoe UI Emoji", Arial`;
@@ -655,7 +667,6 @@ function App() {
   const previewStyle = {
     objectFit: "contain" as const,
     transform: `scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
-    imageRendering: mosaic ? ("pixelated" as const) : ("auto" as const),
     filter: filterValue,
   };
   return (
@@ -806,36 +817,6 @@ function App() {
               title="Transform & effects"
               sub="Make the image fit and add useful details"
             />
-            <div className="transform-tools">
-              <button onClick={() => setRotation((rotation + 90) % 360)}>
-                ↻ Rotate
-              </button>
-              <button onClick={() => setFlipX(!flipX)}>↔ Flip H</button>
-              <button onClick={() => setFlipY(!flipY)}>↕ Flip V</button>
-              <button
-                className={mosaic ? "active" : ""}
-                onClick={() => setMosaic(!mosaic)}
-              >
-                ▦ Mosaic
-              </button>
-            </div>
-            <div className="view-zoom">
-              <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}>
-                −
-              </button>
-              <input
-                type="range"
-                min=".5"
-                max="2"
-                step=".05"
-                value={zoom}
-                onChange={(event) => setZoom(Number(event.target.value))}
-              />
-              <button onClick={() => setZoom(Math.min(2, zoom + 0.1))}>
-                ＋
-              </button>
-              <button onClick={() => setZoom(1)}>Reset</button>
-            </div>
             <Step
               n="05"
               title="Smart canvas extend"
@@ -877,8 +858,8 @@ function App() {
             </div>
             <Step
               n="06"
-              title="Privacy stickers"
-              sub="Use cute stickers instead of plain mosaic"
+              title="Privacy cover"
+              sub="Place mosaic or a cute sticker exactly where needed"
             />
             <div className="sticker-panel">
               <div>
@@ -887,8 +868,9 @@ function App() {
                     key={item}
                     className={privacySticker === item ? "active" : ""}
                     onClick={() => setPrivacySticker(item)}
+                    title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}
                   >
-                    {item}
+                    {item === "mosaic" ? "▦" : item}
                   </button>
                 ))}
               </div>
@@ -896,8 +878,8 @@ function App() {
                 Size{" "}
                 <input
                   type="range"
-                  min="8"
-                  max="42"
+                  min="12"
+                  max="70"
                   value={stickerSize}
                   onChange={(event) =>
                     setStickerSize(Number(event.target.value))
@@ -921,8 +903,8 @@ function App() {
                 Clear sticker
               </button>
               <small>
-                Choose an icon, then click the spot you want to cover in the
-                preview.
+                Choose Mosaic or a sticker, choose its size, then click the
+                exact spot you want to cover in the preview.
               </small>
             </div>
             <Step
@@ -1286,6 +1268,7 @@ function App() {
               className="stage"
               style={{
                 aspectRatio: `${output.width}/${output.height}`,
+                maxWidth: `${Math.min(720, 470 * aspect)}px`,
                 backgroundColor: transparentBackground ? undefined : background,
                 backgroundImage:
                   expandMode === "gradient"
@@ -1350,14 +1333,26 @@ function App() {
                   )}
                   {privacySticker && (
                     <span
-                      className="privacy-sticker-preview"
+                      className={
+                        privacySticker === "mosaic"
+                          ? "privacy-mask-preview mosaic-mask-preview"
+                          : "privacy-sticker-preview"
+                      }
                       style={{
                         left: `${stickerPosition.x * 100}%`,
                         top: `${stickerPosition.y * 100}%`,
-                        fontSize: `${stickerSize * 2}px`,
+                        fontSize: `${stickerSize}cqw`,
+                        width:
+                          privacySticker === "mosaic"
+                            ? `${stickerSize}%`
+                            : undefined,
+                        height:
+                          privacySticker === "mosaic"
+                            ? `${stickerSize}%`
+                            : undefined,
                       }}
                     >
-                      {privacySticker}
+                      {privacySticker === "mosaic" ? "▦" : privacySticker}
                     </span>
                   )}
                   {overlayUrl && (
@@ -1377,6 +1372,36 @@ function App() {
                       }}
                     />
                   )}
+                  <div
+                    className="canvas-zoom"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    aria-label="Preview zoom"
+                  >
+                    <button
+                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                      aria-label="Zoom out"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="range"
+                      min=".5"
+                      max="2"
+                      step=".05"
+                      value={zoom}
+                      onChange={(event) => setZoom(Number(event.target.value))}
+                      aria-label="Preview zoom level"
+                    />
+                    <button
+                      onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+                      aria-label="Zoom in"
+                    >
+                      ＋
+                    </button>
+                    <button className="zoom-reset" onClick={() => setZoom(1)}>
+                      {Math.round(zoom * 100)}%
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div className="empty">
@@ -1386,21 +1411,41 @@ function App() {
                 </div>
               )}
             </div>
+            <div className="preview-transform" aria-label="Preview controls">
+              <div>
+                <button
+                  onClick={() => setRotation((rotation + 90) % 360)}
+                  disabled={!url}
+                >
+                  ↻ Rotate
+                </button>
+                <button onClick={() => setFlipX(!flipX)} disabled={!url}>
+                  ↔ Flip H
+                </button>
+                <button onClick={() => setFlipY(!flipY)} disabled={!url}>
+                  ↕ Flip V
+                </button>
+              </div>
+              <span>{rotation}°</span>
+            </div>
             <div className="preview-foot">
               <span>
                 {url
-                  ? `${Math.round(crop.width * natural.width)} × ${Math.round(crop.height * natural.height)} px crop area`
+                  ? mode === "fit"
+                    ? "Full image visible · no crop"
+                    : `${Math.round(crop.width * natural.width)} × ${Math.round(crop.height * natural.height)} px crop area`
                   : "No image selected"}
               </span>
-              <span>Canvas zoom {Math.round(zoom * 100)}%</span>
-              <div>
-                <button onClick={() => cropZoom(-0.05)} disabled={!url}>
-                  Crop −
-                </button>
-                <button onClick={() => cropZoom(0.05)} disabled={!url}>
-                  Crop ＋
-                </button>
-              </div>
+              {mode === "crop" && (
+                <div>
+                  <button onClick={() => cropZoom(-0.05)} disabled={!url}>
+                    Crop −
+                  </button>
+                  <button onClick={() => cropZoom(0.05)} disabled={!url}>
+                    Crop ＋
+                  </button>
+                </div>
+              )}
             </div>
             <div className="export">
               <label>
