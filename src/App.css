@@ -765,6 +765,123 @@ footer {
   bottom: 3.5%;
   right: 3.5%;
 }
+.expand-panel,
+.sticker-panel {
+  margin: 13px 0 0 26px;
+  padding: 10px;
+  border: 1px solid #e3e5df;
+  border-radius: 5px;
+  background: #fff;
+}
+.expand-panel select {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 7px;
+  font-size: 10px;
+  color: #626962;
+  background: #fff;
+}
+.expand-panel label {
+  display: grid;
+  grid-template-columns: 55px 1fr 25px;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  color: #777;
+  font-size: 9px;
+}
+.expand-panel input {
+  width: 100%;
+  accent-color: #e87562;
+}
+.expand-panel b {
+  font:
+    8px "DM Mono",
+    monospace;
+}
+.expand-panel small,
+.sticker-panel small {
+  display: block;
+  margin-top: 8px;
+  color: #999e96;
+  font-size: 8px;
+  line-height: 1.4;
+}
+.sticker-panel > div {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+.sticker-panel > div button {
+  padding: 4px 1px;
+  border: 1px solid #e0e3dd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 17px;
+}
+.sticker-panel > div button.active {
+  border-color: #e77967;
+  background: #fff4f1;
+}
+.sticker-panel > label {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 5px;
+  align-items: center;
+  margin-top: 8px;
+  color: #777;
+  font-size: 9px;
+}
+.sticker-panel input {
+  width: 100%;
+  accent-color: #e87562;
+}
+.sticker-panel > .place,
+.sticker-panel > button {
+  margin-top: 8px;
+  border: 1px solid #dfe2dc;
+  border-radius: 4px;
+  background: #fff;
+  color: #6f756e;
+  padding: 7px;
+  font-size: 9px;
+}
+.sticker-panel > .place.active {
+  border-color: #e77967;
+  background: #fff2ed;
+  color: #bd594b;
+}
+.sticker-panel > button:last-of-type {
+  margin-left: 5px;
+}
+.sticker-panel button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.expanded-background {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  transform: scale(1.13) !important;
+  transform-origin: center;
+  pointer-events: none;
+}
+.expanded-background.mirror {
+  transform: scale(1.13) scaleX(-1) !important;
+}
+.privacy-sticker-preview {
+  position: absolute;
+  z-index: 9;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #0004;
+}
 
 .shape-grid {
   display: grid;
@@ -863,15 +980,18 @@ footer {
   color: #9a9e97;
   margin-top: 7px;
 }
-.preview-image.circle {
+.preview-image.circle,
+.expanded-background.circle {
   clip-path: circle(50% at 50% 50%);
 }
-.preview-image.heart {
+.preview-image.heart,
+.expanded-background.heart {
   clip-path: path(
     "M 50% 90% C -8% 55% 8% 12% 30% 18% C 43% 2% 50% 18% 50% 28% C 50% 18% 57% 2% 70% 18% C 92% 12% 108% 55% 50% 90%"
   );
 }
-.preview-image.star {
+.preview-image.star,
+.expanded-background.star {
   clip-path: polygon(
     50% 2%,
     61% 35%,
@@ -885,7 +1005,8 @@ footer {
     39% 35%
   );
 }
-.preview-image.sticker {
+.preview-image.sticker,
+.expanded-background.sticker {
   clip-path: inset(0 round 9%);
 }
 .measure-preview {
@@ -984,16 +1105,20 @@ footer {
   transition: transform 0.2s ease;
   transform-origin: center;
 }
-.preview-image.ellipse {
+.preview-image.ellipse,
+.expanded-background.ellipse {
   clip-path: ellipse(48% 34% at 50% 50%);
 }
-.preview-image.hexagon {
+.preview-image.hexagon,
+.expanded-background.hexagon {
   clip-path: polygon(50% 2%, 92% 25%, 92% 75%, 50% 98%, 8% 75%, 8% 25%);
 }
-.preview-image.triangle {
+.preview-image.triangle,
+.expanded-background.triangle {
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
-.preview-image.badge {
+.preview-image.badge,
+.expanded-background.badge {
   clip-path: polygon(
     50% 0,
     61% 17%,

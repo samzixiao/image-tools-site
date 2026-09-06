@@ -13,6 +13,7 @@ type Shape =
   | "triangle"
   | "badge"
   | "sticker";
+type ExpandMode = "none" | "blur" | "mirror" | "gradient" | "solid";
 type Preset = {
   id: string;
   group: string;
@@ -109,6 +110,19 @@ const shapeSymbol: Record<Shape, string> = {
   badge: "✹",
   sticker: "▣",
 };
+const privacyStickers = [
+  "🦊",
+  "🐼",
+  "🐱",
+  "🐶",
+  "🐰",
+  "🧸",
+  "🌼",
+  "⭐",
+  "❤️",
+  "😎",
+  "😊",
+];
 
 function App() {
   const [url, setUrl] = useState(""),
@@ -156,6 +170,12 @@ function App() {
       "top-left" | "top-right" | "bottom-left" | "bottom-right"
     >("bottom-right"),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
+  const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
+    [expandStrength, setExpandStrength] = useState(35),
+    [privacySticker, setPrivacySticker] = useState(""),
+    [stickerSize, setStickerSize] = useState(18),
+    [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
+    [placingSticker, setPlacingSticker] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
     [drag, setDrag] = useState<{
       x: number;
@@ -203,7 +223,23 @@ function App() {
       setCustom({ width: next.width, height: next.height });
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (!url || mode === "fit") return;
+    if (!url) return;
+    if (placingSticker && privacySticker) {
+      const box = event.currentTarget.getBoundingClientRect();
+      setStickerPosition({
+        x: Math.min(
+          0.95,
+          Math.max(0.05, (event.clientX - box.left) / box.width),
+        ),
+        y: Math.min(
+          0.95,
+          Math.max(0.05, (event.clientY - box.top) / box.height),
+        ),
+      });
+      setPlacingSticker(false);
+      return;
+    }
+    if (mode === "fit") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({ x: event.clientX, y: event.clientY, crop });
   }
@@ -254,6 +290,9 @@ function App() {
     setText("");
     setMeasure(false);
     setOverlayUrl("");
+    setExpandMode("none");
+    setPrivacySticker("");
+    setPlacingSticker(false);
   }
   function removeSolidBackground() {
     if (!url) return;
@@ -466,6 +505,57 @@ function App() {
     ctx.fillText(text, width / 2, y, width * 0.9);
     ctx.restore();
   }
+  function drawExpansion(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    width: number,
+    height: number,
+  ) {
+    if (expandMode === "none" || expandMode === "solid") return;
+    if (expandMode === "gradient") {
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, background);
+      gradient.addColorStop(1, "#1e293b");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      return;
+    }
+    const scale =
+        Math.max(width / image.naturalWidth, height / image.naturalHeight) *
+        1.12,
+      drawWidth = image.naturalWidth * scale,
+      drawHeight = image.naturalHeight * scale;
+    ctx.save();
+    ctx.translate(width / 2, height / 2);
+    if (expandMode === "mirror") ctx.scale(-1, 1);
+    ctx.filter = `blur(${Math.max(3, expandStrength / 2)}px) brightness(82%) saturate(110%)`;
+    ctx.drawImage(
+      image,
+      -drawWidth / 2,
+      -drawHeight / 2,
+      drawWidth,
+      drawHeight,
+    );
+    ctx.restore();
+  }
+  function drawPrivacySticker(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+  ) {
+    if (!privacySticker) return;
+    ctx.save();
+    const size = Math.max(28, (width * stickerSize) / 100);
+    ctx.font = `${size}px "Segoe UI Emoji", Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      privacySticker,
+      stickerPosition.x * width,
+      stickerPosition.y * height,
+    );
+    ctx.restore();
+  }
   function loadImage(source: string) {
     return new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
@@ -502,6 +592,7 @@ function App() {
         drawHeight,
       );
     ctx.clip();
+    drawExpansion(ctx, image, canvas.width, canvas.height);
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
@@ -536,6 +627,7 @@ function App() {
     }
     drawText(ctx, canvas.width, canvas.height);
     drawAnnotations(ctx, canvas.width, canvas.height);
+    drawPrivacySticker(ctx, canvas.width, canvas.height);
     if (overlayUrl) {
       const overlay = await loadImage(overlayUrl);
       const targetWidth = canvas.width * 0.22,
@@ -746,6 +838,95 @@ function App() {
             </div>
             <Step
               n="05"
+              title="Smart canvas extend"
+              sub="Keep the person; fill the empty background"
+            />
+            <div className="expand-panel">
+              <select
+                value={expandMode}
+                onChange={(event) => {
+                  setExpandMode(event.target.value as ExpandMode);
+                  if (event.target.value !== "none") setMode("fit");
+                }}
+              >
+                <option value="none">No extension</option>
+                <option value="blur">Blurred photo extension</option>
+                <option value="mirror">Mirrored photo extension</option>
+                <option value="gradient">Gradient extension</option>
+                <option value="solid">Solid-color extension</option>
+              </select>
+              {(expandMode === "blur" || expandMode === "mirror") && (
+                <label>
+                  Softness{" "}
+                  <input
+                    type="range"
+                    min="8"
+                    max="90"
+                    value={expandStrength}
+                    onChange={(event) =>
+                      setExpandStrength(Number(event.target.value))
+                    }
+                  />{" "}
+                  <b>{expandStrength}</b>
+                </label>
+              )}
+              <small>
+                Fits the original photo on top of an extended background. It
+                does not invent missing scenery.
+              </small>
+            </div>
+            <Step
+              n="06"
+              title="Privacy stickers"
+              sub="Use cute stickers instead of plain mosaic"
+            />
+            <div className="sticker-panel">
+              <div>
+                {privacyStickers.map((item) => (
+                  <button
+                    key={item}
+                    className={privacySticker === item ? "active" : ""}
+                    onClick={() => setPrivacySticker(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <label>
+                Size{" "}
+                <input
+                  type="range"
+                  min="8"
+                  max="42"
+                  value={stickerSize}
+                  onChange={(event) =>
+                    setStickerSize(Number(event.target.value))
+                  }
+                />
+              </label>
+              <button
+                className={placingSticker ? "place active" : "place"}
+                disabled={!privacySticker || !url}
+                onClick={() => setPlacingSticker(true)}
+              >
+                {placingSticker ? "Click the image…" : "Place on image"}
+              </button>
+              <button
+                onClick={() => {
+                  setPrivacySticker("");
+                  setPlacingSticker(false);
+                }}
+                disabled={!privacySticker}
+              >
+                Clear sticker
+              </button>
+              <small>
+                Choose an icon, then click the spot you want to cover in the
+                preview.
+              </small>
+            </div>
+            <Step
+              n="07"
               title="Light, color & filters"
               sub="Non-destructive browser adjustments"
             />
@@ -836,7 +1017,7 @@ function App() {
               </button>
             </div>
             <Step
-              n="06"
+              n="08"
               title="Text, watermark & canvas"
               sub="Add a caption, background, or border"
             />
@@ -1001,7 +1182,7 @@ function App() {
               Reset all edits
             </button>
             <Step
-              n="07"
+              n="09"
               title="Product details"
               sub="Optional bilingual size markers and text layer"
             />
@@ -1070,7 +1251,7 @@ function App() {
               </div>
             )}
             <Step
-              n="08"
+              n="10"
               title="Fit & export"
               sub="Choose crop or keep the full image"
             />
@@ -1106,6 +1287,10 @@ function App() {
               style={{
                 aspectRatio: `${output.width}/${output.height}`,
                 backgroundColor: transparentBackground ? undefined : background,
+                backgroundImage:
+                  expandMode === "gradient"
+                    ? `linear-gradient(135deg, ${background}, #1e293b)`
+                    : undefined,
               }}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
@@ -1113,6 +1298,16 @@ function App() {
             >
               {url ? (
                 <>
+                  {(expandMode === "blur" || expandMode === "mirror") && (
+                    <img
+                      src={url}
+                      alt="Extended background"
+                      className={`expanded-background ${expandMode} ${shape}`}
+                      style={{
+                        filter: `blur(${Math.max(3, expandStrength / 2)}px) brightness(82%) saturate(110%)`,
+                      }}
+                    />
+                  )}
                   <img
                     src={url}
                     alt="Preview"
@@ -1152,6 +1347,18 @@ function App() {
                     >
                       {text}
                     </div>
+                  )}
+                  {privacySticker && (
+                    <span
+                      className="privacy-sticker-preview"
+                      style={{
+                        left: `${stickerPosition.x * 100}%`,
+                        top: `${stickerPosition.y * 100}%`,
+                        fontSize: `${stickerSize * 2}px`,
+                      }}
+                    >
+                      {privacySticker}
+                    </span>
                   )}
                   {overlayUrl && (
                     <img
