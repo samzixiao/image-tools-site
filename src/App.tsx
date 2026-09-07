@@ -30,8 +30,7 @@ type DimensionMarker = {
   rotation: number;
   color: string;
   thickness: number;
-  outlineEnabled: boolean;
-  outlineColor: string;
+  endStyle: "arrows" | "ticks" | "none";
 };
 type TextLayer = {
   id: number;
@@ -41,9 +40,8 @@ type TextLayer = {
   position: { x: number; y: number };
   rotation: number;
   scale: number;
-  outlineEnabled: boolean;
-  outlineColor: string;
-  outlineWidth: number;
+  fontFamily: "Inter" | "Roboto" | "Poppins" | "Montserrat" | "Open Sans";
+  bold: boolean;
 };
 type Preset = {
   id: string;
@@ -844,29 +842,31 @@ function App() {
     ctx.moveTo(-length / 2, 0);
     ctx.lineTo(length / 2, 0);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-length / 2, 0);
-    ctx.lineTo(-length / 2 + arrow, -arrow * 0.7);
-    ctx.lineTo(-length / 2 + arrow, arrow * 0.7);
-    ctx.closePath();
-    ctx.moveTo(length / 2, 0);
-    ctx.lineTo(length / 2 - arrow, -arrow * 0.7);
-    ctx.lineTo(length / 2 - arrow, arrow * 0.7);
-    ctx.closePath();
-    ctx.fill();
-    if (marker.outlineEnabled) {
-      ctx.strokeStyle = marker.outlineColor;
-      ctx.lineWidth = Math.max(1, marker.thickness * 0.55);
+    if (marker.endStyle === "arrows") {
+      ctx.beginPath();
+      ctx.moveTo(-length / 2, 0);
+      ctx.lineTo(-length / 2 + arrow, -arrow * 0.7);
+      ctx.lineTo(-length / 2 + arrow, arrow * 0.7);
+      ctx.closePath();
+      ctx.moveTo(length / 2, 0);
+      ctx.lineTo(length / 2 - arrow, -arrow * 0.7);
+      ctx.lineTo(length / 2 - arrow, arrow * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (marker.endStyle === "ticks") {
+      ctx.strokeStyle = marker.color;
+      ctx.lineWidth = Math.max(marker.thickness, width / 550);
+      ctx.beginPath();
+      ctx.moveTo(-length / 2, -arrow * 0.8);
+      ctx.lineTo(-length / 2, arrow * 0.8);
+      ctx.moveTo(length / 2, -arrow * 0.8);
+      ctx.lineTo(length / 2, arrow * 0.8);
       ctx.stroke();
     }
-    ctx.font = `700 ${fontSize}px Arial`;
+    ctx.font = `500 ${fontSize}px Inter, Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    if (marker.outlineEnabled) {
-      ctx.strokeStyle = marker.outlineColor;
-      ctx.lineWidth = Math.max(1, marker.thickness * 0.55);
-      ctx.strokeText(dimensionLabel(marker), 0, -arrow * 0.85);
-    }
     ctx.fillStyle = marker.color;
     ctx.fillText(dimensionLabel(marker), 0, -arrow * 0.85);
     ctx.restore();
@@ -883,17 +883,10 @@ function App() {
     ctx.translate(layer.position.x * width, layer.position.y * height);
     ctx.rotate((layer.rotation * Math.PI) / 180);
     ctx.scale(layer.scale, layer.scale);
-    ctx.font = `700 ${size}px Arial`;
+    ctx.font = `${layer.bold ? 700 : 400} ${size}px "${layer.fontFamily}", Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = layer.color;
-    ctx.shadowColor = "#00000099";
-    ctx.shadowBlur = size * 0.15;
-    if (layer.outlineEnabled) {
-      ctx.strokeStyle = layer.outlineColor;
-      ctx.lineWidth = Math.max(1, (layer.outlineWidth * width) / 1080);
-      ctx.strokeText(layer.content, 0, 0, width * 0.9);
-    }
     ctx.fillText(layer.content, 0, 0, width * 0.9);
     ctx.restore();
   }
@@ -1506,7 +1499,7 @@ function App() {
                 disabled={!url}
                 onClick={() => {
                   const id = Date.now();
-                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, outlineEnabled: false, outlineColor: "#1d2821", outlineWidth: 2 }]);
+                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false }]);
                   setSelectedTextId(id);
                 }}
               >
@@ -1534,14 +1527,17 @@ function App() {
                     <label>
                       Scale <input type="range" min="0.3" max="3" step="0.1" value={selectedText.scale} onChange={(event) => updateSelectedText({ scale: Number(event.target.value) })} />
                     </label>
+                    <label>
+                      Font <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as TextLayer["fontFamily"] })}>
+                        <option value="Inter">Inter</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Poppins">Poppins</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Open Sans">Open Sans</option>
+                      </select>
+                    </label>
                     <label className="outline-toggle">
-                      <input type="checkbox" checked={selectedText.outlineEnabled} onChange={(event) => updateSelectedText({ outlineEnabled: event.target.checked })} /> Outline
-                    </label>
-                    <label>
-                      Outline <input type="color" value={selectedText.outlineColor} disabled={!selectedText.outlineEnabled} onChange={(event) => updateSelectedText({ outlineColor: event.target.value })} />
-                    </label>
-                    <label>
-                      Outline px <input type="range" min="1" max="10" value={selectedText.outlineWidth} disabled={!selectedText.outlineEnabled} onChange={(event) => updateSelectedText({ outlineWidth: Number(event.target.value) })} />
+                      <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
                     </label>
                     <button
                       className="delete-text"
@@ -1709,8 +1705,7 @@ function App() {
                       rotation: 0,
                       color: "#e66d5b",
                       thickness: 2,
-                      outlineEnabled: false,
-                      outlineColor: "#ffffff",
+                      endStyle: "arrows",
                     },
                   ]);
                   setSelectedMarkerId(id);
@@ -1781,11 +1776,13 @@ function App() {
                     Stroke <b>{selectedMarker.thickness}px</b>
                     <input type="range" min="1" max="10" value={selectedMarker.thickness} onChange={(event) => updateSelectedMarker({ thickness: Number(event.target.value) })} />
                   </label>
-                  <label className="outline-toggle">
-                    <input type="checkbox" checked={selectedMarker.outlineEnabled} onChange={(event) => updateSelectedMarker({ outlineEnabled: event.target.checked })} /> Outline arrow & label
-                  </label>
                   <label>
-                    Outline color <input type="color" disabled={!selectedMarker.outlineEnabled} value={selectedMarker.outlineColor} onChange={(event) => updateSelectedMarker({ outlineColor: event.target.value })} />
+                    Ends
+                    <select value={selectedMarker.endStyle} onChange={(event) => updateSelectedMarker({ endStyle: event.target.value as DimensionMarker["endStyle"] })}>
+                      <option value="arrows">Double arrows</option>
+                      <option value="ticks">Short vertical ticks</option>
+                      <option value="none">Plain line</option>
+                    </select>
                   </label>
                   <button
                     className="delete-dimension"
@@ -1950,8 +1947,8 @@ function App() {
                       key={marker.id}
                       className={
                         marker.id === selectedMarkerId
-                          ? "dimension-marker selected editable"
-                          : "dimension-marker editable"
+                          ? `dimension-marker ${marker.endStyle} selected editable`
+                          : `dimension-marker ${marker.endStyle} editable`
                       }
                       onPointerDown={(event) => beginMarkerDrag(event, marker)}
                       onClick={(event) => {
@@ -1968,8 +1965,6 @@ function App() {
                         borderBottomWidth: `${marker.thickness}px`,
                         "--dimension-color": marker.color,
                         "--dimension-width": `${marker.thickness}px`,
-                        "--dimension-outline": marker.outlineEnabled ? marker.outlineColor : "transparent",
-                        "--dimension-outline-width": marker.outlineEnabled ? `${Math.max(1, marker.thickness * 0.55)}px` : "0px",
                       } as CSSProperties}
                     >
                       <span>{dimensionLabel(marker)}</span>
@@ -1987,7 +1982,9 @@ function App() {
                         left: `${layer.position.x * 100}%`,
                         top: `${layer.position.y * 100}%`,
                         transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scale})`,
-                        WebkitTextStroke: layer.outlineEnabled ? `${layer.outlineWidth}px ${layer.outlineColor}` : "0 transparent",
+                        fontFamily: `"${layer.fontFamily}", Arial, sans-serif`,
+                        fontWeight: layer.bold ? 700 : 400,
+                        textShadow: "none",
                       }}
                     >
                       {layer.content}
