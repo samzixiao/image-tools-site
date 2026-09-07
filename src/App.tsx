@@ -12,7 +12,8 @@ type Shape =
   | "hexagon"
   | "triangle"
   | "badge"
-  | "sticker";
+  | "sticker"
+  | "polygon";
 type ExpandMode = "none" | "blur" | "mirror" | "gradient" | "solid";
 type Preset = {
   id: string;
@@ -98,6 +99,7 @@ const shapes: Shape[] = [
   "triangle",
   "badge",
   "sticker",
+  "polygon",
 ];
 const shapeSymbol: Record<Shape, string> = {
   original: "□",
@@ -109,6 +111,7 @@ const shapeSymbol: Record<Shape, string> = {
   triangle: "▲",
   badge: "✹",
   sticker: "▣",
+  polygon: "⬠",
 };
 const privacyStickers = [
   "mosaic",
@@ -135,7 +138,7 @@ function App() {
     [custom, setCustom] = useState({ width: 1080, height: 1080 });
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
-    [mode, setMode] = useState<"crop" | "fit">("fit");
+    [mode, setMode] = useState<"crop" | "fit">("crop");
   const [shape, setShape] = useState<Shape>("original"),
     [zoom, setZoom] = useState(1),
     [rotation, setRotation] = useState(0),
@@ -178,6 +181,26 @@ function App() {
     [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
     [placingSticker, setPlacingSticker] = useState(false);
   const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 });
+  const [customFrame, setCustomFrame] = useState({
+    x: 0.1,
+    y: 0.1,
+    width: 0.8,
+    height: 0.8,
+  });
+  const [frameDrag, setFrameDrag] = useState<{
+    x: number;
+    y: number;
+    frame: typeof customFrame;
+    corner: "nw" | "ne" | "se" | "sw";
+  } | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState([
+    { x: 0.2, y: 0.2 },
+    { x: 0.8, y: 0.2 },
+    { x: 0.8, y: 0.8 },
+    { x: 0.2, y: 0.8 },
+  ]);
+  const [addingPolygonPoint, setAddingPolygonPoint] = useState(false),
+    [polygonDrag, setPolygonDrag] = useState<number | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
     [drag, setDrag] = useState<{
       x: number;
@@ -192,7 +215,23 @@ function App() {
       preset.id === "custom"
         ? custom
         : { width: preset.width, height: preset.height },
-    aspect = output.width / output.height;
+    aspect = output.width / output.height,
+    cropFrame =
+      preset.id === "custom"
+        ? customFrame
+        : aspect >= 1
+          ? {
+              x: 0.09,
+              y: (1 - 0.82 / aspect) / 2,
+              width: 0.82,
+              height: 0.82 / aspect,
+            }
+          : {
+              x: (1 - 0.82 * aspect) / 2,
+              y: 0.09,
+              width: 0.82 * aspect,
+              height: 0.82,
+            };
 
   useEffect(() => {
     if (!url) return;
@@ -243,6 +282,22 @@ function App() {
       setPlacingSticker(false);
       return;
     }
+    if (addingPolygonPoint && shape === "polygon") {
+      const box = event.currentTarget.getBoundingClientRect();
+      setPolygonPoints((current) =>
+        current.length >= 30
+          ? current
+          : [
+              ...current,
+              {
+                x: Math.min(0.98, Math.max(0.02, (event.clientX - box.left) / box.width)),
+                y: Math.min(0.98, Math.max(0.02, (event.clientY - box.top) / box.height)),
+              },
+            ],
+      );
+      setAddingPolygonPoint(false);
+      return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
       x: event.clientX,
@@ -253,9 +308,53 @@ function App() {
     });
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
+    const box = event.currentTarget.getBoundingClientRect();
+    if (polygonDrag !== null) {
+      setPolygonPoints((current) =>
+        current.map((point, index) =>
+          index === polygonDrag
+            ? {
+                x: Math.min(0.98, Math.max(0.02, (event.clientX - box.left) / box.width)),
+                y: Math.min(0.98, Math.max(0.02, (event.clientY - box.top) / box.height)),
+              }
+            : point,
+        ),
+      );
+      return;
+    }
+    if (frameDrag) {
+      const dx = (event.clientX - frameDrag.x) / box.width,
+        dy = (event.clientY - frameDrag.y) / box.height,
+        min = 0.12,
+        right = frameDrag.frame.x + frameDrag.frame.width,
+        bottom = frameDrag.frame.y + frameDrag.frame.height;
+      let next = { ...frameDrag.frame };
+      if (frameDrag.corner === "se") {
+        next.width = Math.min(1 - next.x, Math.max(min, next.width + dx));
+        next.height = Math.min(1 - next.y, Math.max(min, next.height + dy));
+      } else if (frameDrag.corner === "sw") {
+        next.x = Math.min(right - min, Math.max(0, next.x + dx));
+        next.width = right - next.x;
+        next.height = Math.min(1 - next.y, Math.max(min, next.height + dy));
+      } else if (frameDrag.corner === "ne") {
+        next.y = Math.min(bottom - min, Math.max(0, next.y + dy));
+        next.height = bottom - next.y;
+        next.width = Math.min(1 - next.x, Math.max(min, next.width + dx));
+      } else {
+        next.x = Math.min(right - min, Math.max(0, next.x + dx));
+        next.y = Math.min(bottom - min, Math.max(0, next.y + dy));
+        next.width = right - next.x;
+        next.height = bottom - next.y;
+      }
+      setCustomFrame(next);
+      setCustom((current) => ({
+        ...current,
+        height: Math.max(1, Math.round((current.width * next.height) / next.width)),
+      }));
+      return;
+    }
     if (!drag) return;
-    const box = event.currentTarget.getBoundingClientRect(),
-      dx = (event.clientX - drag.x) / box.width,
+    const dx = (event.clientX - drag.x) / box.width,
       dy = (event.clientY - drag.y) / box.height;
     if (drag.mode === "fit") {
       setFitPosition({
@@ -280,6 +379,18 @@ function App() {
       height,
       x: Math.min(crop.x, 1 - width),
       y: Math.min(crop.y, 1 - height),
+    });
+  }
+  function beginFrameResize(
+    event: PointerEvent<HTMLButtonElement>,
+    corner: "nw" | "ne" | "se" | "sw",
+  ) {
+    event.stopPropagation();
+    setFrameDrag({
+      x: event.clientX,
+      y: event.clientY,
+      frame: customFrame,
+      corner,
     });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
@@ -309,6 +420,14 @@ function App() {
     setExpandMode("none");
     setPrivacySticker("");
     setPlacingSticker(false);
+    setCustomFrame({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
+    setPolygonPoints([
+      { x: 0.2, y: 0.2 },
+      { x: 0.8, y: 0.2 },
+      { x: 0.8, y: 0.8 },
+      { x: 0.2, y: 0.8 },
+    ]);
+    setAddingPolygonPoint(false);
   }
   function removeSolidBackground() {
     if (!url) return;
@@ -370,6 +489,16 @@ function App() {
 
   function path(ctx: CanvasRenderingContext2D, width: number, height: number) {
     ctx.beginPath();
+    if (shape === "polygon") {
+      polygonPoints.forEach((point, index) => {
+        const x = point.x * width,
+          y = point.y * height;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      return;
+    }
     if (shape === "circle") {
       ctx.ellipse(
         width / 2,
@@ -689,9 +818,9 @@ function App() {
   }
 
   const previewStyle = {
-    objectFit: "contain" as const,
-    objectPosition: `${fitPosition.x * 100}% ${fitPosition.y * 100}%`,
-    transform: `scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
+    objectFit: "cover" as const,
+    objectPosition: `${crop.x * 100}% ${crop.y * 100}%`,
+    transform: `translate(${(crop.x - 0.5) * -34}cqw, ${(crop.y - 0.5) * -34}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
     filter: filterValue,
   };
   return (
@@ -821,7 +950,7 @@ function App() {
             <Step
               n="03"
               title="Shape crop"
-              sub="Choose a profile, badge, or sticker shape"
+              sub="Choose a profile, badge, sticker, or DIY polygon"
             />
             <div className="shape-grid">
               {shapes.map((item) => (
@@ -837,6 +966,33 @@ function App() {
                 </button>
               ))}
             </div>
+            {shape === "polygon" && (
+              <div className="polygon-panel">
+                <b>DIY polygon · {polygonPoints.length}/30 points</b>
+                <div>
+                  <button
+                    className={addingPolygonPoint ? "active" : ""}
+                    onClick={() => setAddingPolygonPoint(true)}
+                    disabled={polygonPoints.length >= 30}
+                  >
+                    {addingPolygonPoint ? "Click the preview…" : "＋ Add point"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      setPolygonPoints([
+                        { x: 0.2, y: 0.2 },
+                        { x: 0.8, y: 0.2 },
+                        { x: 0.8, y: 0.8 },
+                        { x: 0.2, y: 0.8 },
+                      ])
+                    }
+                  >
+                    Reset 4 points
+                  </button>
+                </div>
+                <small>Drag any orange point in the preview to reshape it.</small>
+              </div>
+            )}
             <Step
               n="04"
               title="Transform & effects"
@@ -1292,8 +1448,8 @@ function App() {
             <div
               className={drag ? "stage is-dragging" : "stage"}
               style={{
-                aspectRatio: `${output.width}/${output.height}`,
-                maxWidth: `${Math.min(720, 470 * aspect)}px`,
+                aspectRatio: "1 / 1",
+                maxWidth: "470px",
                 backgroundColor: transparentBackground ? undefined : background,
                 backgroundImage:
                   expandMode === "gradient"
@@ -1302,7 +1458,11 @@ function App() {
               }}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
-              onPointerUp={() => setDrag(null)}
+              onPointerUp={() => {
+                setDrag(null);
+                setFrameDrag(null);
+                setPolygonDrag(null);
+              }}
             >
               {url ? (
                 <>
@@ -1322,20 +1482,55 @@ function App() {
                     className={`preview-image ${shape}`}
                     style={previewStyle}
                   />
-                  {mode === "crop" && (
+                  {mode === "crop" && shape !== "polygon" && (
                     <div
-                      className="crop"
+                      className={
+                        preset.id === "custom" ? "crop editable" : "crop"
+                      }
                       style={{
-                        left: `${crop.x * 100}%`,
-                        top: `${crop.y * 100}%`,
-                        width: `${crop.width * 100}%`,
-                        height: `${crop.height * 100}%`,
+                        left: `${cropFrame.x * 100}%`,
+                        top: `${cropFrame.y * 100}%`,
+                        width: `${cropFrame.width * 100}%`,
+                        height: `${cropFrame.height * 100}%`,
                       }}
-                    />
+                    >
+                      {preset.id === "custom" &&
+                        (["nw", "ne", "se", "sw"] as const).map((corner) => (
+                          <button
+                            key={corner}
+                            className={`crop-handle ${corner}`}
+                            aria-label={`Resize crop ${corner}`}
+                            onPointerDown={(event) =>
+                              beginFrameResize(event, corner)
+                            }
+                          />
+                        ))}
+                    </div>
+                  )}
+                  {shape === "polygon" && (
+                    <svg className="polygon-preview" viewBox="0 0 100 100">
+                      <polygon
+                        points={polygonPoints
+                          .map((point) => `${point.x * 100},${point.y * 100}`)
+                          .join(" ")}
+                      />
+                      {polygonPoints.map((point, index) => (
+                        <circle
+                          key={index}
+                          cx={point.x * 100}
+                          cy={point.y * 100}
+                          r="1.8"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                            setPolygonDrag(index);
+                          }}
+                        />
+                      ))}
+                    </svg>
                   )}
                   <span className="drag-hint">
-                    {mode === "crop"
-                      ? "DRAG TO REPOSITION CROP"
+                    {addingPolygonPoint
+                      ? "CLICK TO ADD A POLYGON POINT"
                       : "DRAG PHOTO TO POSITION"}
                   </span>
                   {measure && (
