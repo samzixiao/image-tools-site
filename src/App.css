@@ -1342,70 +1342,66 @@ footer {
 .expanded-background.sticker {
   clip-path: inset(0 round 9%);
 }
-.dimension-marker {
+.dimension-line {
   position: absolute;
   z-index: 11;
-  height: 0;
-  border-bottom: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
-  color: #c65d4d;
-  font: 400 10px Inter, Arial, sans-serif;
+  height: 24px;
   pointer-events: none;
-  text-align: center;
   cursor: move;
   transform-origin: center center;
 }
-.dimension-marker.editable { pointer-events: auto; }
-.dimension-marker.selected { filter: none; }
-.dimension-marker:before,
-.dimension-marker:after {
-  content: "";
-  position: absolute;
-  top: -6px;
-  width: 0;
-  height: 0;
-  border-top: 6px solid transparent;
-  border-bottom: 6px solid transparent;
-}
-.dimension-marker:before {
-  left: 0;
-  width: 11px;
-  height: 12px;
-  border: 0;
-  background: var(--dimension-color, #e66d5b);
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-}
-.dimension-marker:after {
-  right: 0;
-  width: 11px;
-  height: 12px;
-  border: 0;
-  background: var(--dimension-color, #e66d5b);
-  clip-path: polygon(100% 50%, 0 0, 0 100%);
-}
-.dimension-marker.ticks:before,
-.dimension-marker.ticks:after {
-  top: -8px;
-  width: 0;
-  height: 16px;
-  border: 0;
-  border-left: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
-}
-.dimension-marker.ticks:before { left: 0; }
-.dimension-marker.ticks:after { right: 0; }
-.dimension-marker.none:before,
-.dimension-marker.none:after { display: none; }
-.dimension-marker span {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
+.dimension-line.editable,
+.dimension-label.editable { pointer-events: auto; }
+.dimension-line.selected { filter: none; }
+.dimension-line svg {
   display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.dimension-label {
+  position: absolute;
+  z-index: 12;
   background: transparent;
-  width: max-content;
-  max-width: 100%;
-  margin: 0;
   padding: 0;
+  border: 0;
+  outline: 0;
+  color: #c65d4d;
+  font: 400 10px Inter, Arial, sans-serif;
+  line-height: 1;
+  text-shadow: none;
   white-space: nowrap;
-  transform: translateX(-50%);
+  cursor: move;
+  pointer-events: none;
+  transform-origin: center center;
+}
+.dimension-label-controls {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #eceee9;
+  border-radius: 4px;
+  background: #fafbf8;
+}
+.dimension-label-controls > b {
+  color: #626960;
+  font-size: 10px;
+}
+.dimension-flips {
+  display: flex;
+  gap: 5px;
+}
+.dimension-flips button {
+  border: 1px solid #dfe2dc;
+  border-radius: 4px;
+  padding: 5px 7px;
+  background: #fff;
+  color: #71766e;
+  font-size: 9px;
+}
+.dimension-flips button.active {
+  border-color: #e77967;
+  color: #bd594b;
 }
 .tool-cards {
   padding: 72px 20px 78px;

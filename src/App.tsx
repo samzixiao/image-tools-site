@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent, CSSProperties, PointerEvent } from "react";
+import type { ChangeEvent, PointerEvent } from "react";
 import "./App.css";
 
 type Format = "image/jpeg" | "image/png" | "image/webp";
@@ -31,6 +31,11 @@ type DimensionMarker = {
   color: string;
   thickness: number;
   endStyle: "arrows" | "ticks" | "none";
+  labelPosition: { x: number; y: number };
+  labelRotation: number;
+  labelScale: number;
+  labelFlipX: boolean;
+  labelFlipY: boolean;
 };
 type TextLayer = {
   id: number;
@@ -225,6 +230,12 @@ function App() {
     y: number;
     position: DimensionMarker["position"];
   } | null>(null);
+  const [markerLabelDrag, setMarkerLabelDrag] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    position: DimensionMarker["labelPosition"];
+  } | null>(null);
   const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
     [expandStrength, setExpandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
@@ -407,6 +418,14 @@ function App() {
         y: Math.min(0.9, Math.max(0.1, markerDrag.position.y + (event.clientY - markerDrag.y) / box.height)),
       };
       setDimensionMarkers((current) => current.map((marker) => marker.id === markerDrag.id ? { ...marker, position } : marker));
+      return;
+    }
+    if (markerLabelDrag) {
+      const labelPosition = {
+        x: Math.min(0.96, Math.max(0.04, markerLabelDrag.position.x + (event.clientX - markerLabelDrag.x) / box.width)),
+        y: Math.min(0.96, Math.max(0.04, markerLabelDrag.position.y + (event.clientY - markerLabelDrag.y) / box.height)),
+      };
+      setDimensionMarkers((current) => current.map((marker) => marker.id === markerLabelDrag.id ? { ...marker, labelPosition } : marker));
       return;
     }
     if (textDrag) {
@@ -611,6 +630,11 @@ function App() {
     event.stopPropagation();
     setSelectedMarkerId(marker.id);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
+  }
+  function beginMarkerLabelDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
+    event.stopPropagation();
+    setSelectedMarkerId(marker.id);
+    setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
   function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
     event.stopPropagation();
@@ -827,13 +851,14 @@ function App() {
   function drawDimensionMarker(
     ctx: CanvasRenderingContext2D,
     width: number,
+    height: number,
     marker: DimensionMarker,
   ) {
     const length = (width * marker.length) / 100,
-      arrow = Math.max(8, width / 75),
+      arrow = Math.max(8, Math.min(width, height) / 75),
       fontSize = Math.max(16, width / 44);
     ctx.save();
-    ctx.translate(marker.position.x * width, marker.position.y * width);
+    ctx.translate(marker.position.x * width, marker.position.y * height);
     ctx.rotate((marker.rotation * Math.PI) / 180);
     ctx.strokeStyle = marker.color;
     ctx.fillStyle = marker.color;
@@ -864,11 +889,19 @@ function App() {
       ctx.lineTo(length / 2, arrow * 0.8);
       ctx.stroke();
     }
+    ctx.restore();
+    ctx.save();
+    ctx.translate(marker.labelPosition.x * width, marker.labelPosition.y * height);
+    ctx.rotate((marker.labelRotation * Math.PI) / 180);
+    ctx.scale(
+      marker.labelScale * (marker.labelFlipX ? -1 : 1),
+      marker.labelScale * (marker.labelFlipY ? -1 : 1),
+    );
     ctx.font = `400 ${fontSize}px Inter, Arial, sans-serif`;
     ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
+    ctx.textBaseline = "middle";
     ctx.fillStyle = marker.color;
-    ctx.fillText(dimensionLabel(marker), 0, -arrow * 0.85);
+    ctx.fillText(dimensionLabel(marker), 0, 0);
     ctx.restore();
   }
   function drawTextLayer(
@@ -1034,7 +1067,7 @@ function App() {
     }
     textLayers.forEach((layer) => drawTextLayer(ctx, canvas.width, canvas.height, layer));
     dimensionMarkers.forEach((marker) =>
-      drawDimensionMarker(ctx, canvas.width, marker),
+      drawDimensionMarker(ctx, canvas.width, canvas.height, marker),
     );
     for (const cover of privacyCovers.filter(
       (item) => item.kind !== "mosaic",
@@ -1706,6 +1739,11 @@ function App() {
                       color: "#e66d5b",
                       thickness: 2,
                       endStyle: "arrows",
+                      labelPosition: { x: 0.5, y: 0.69 },
+                      labelRotation: 0,
+                      labelScale: 1,
+                      labelFlipX: false,
+                      labelFlipY: false,
                     },
                   ]);
                   setSelectedMarkerId(id);
@@ -1784,6 +1822,22 @@ function App() {
                       <option value="none">Plain line</option>
                     </select>
                   </label>
+                  <div className="dimension-label-controls">
+                    <b>Dimension text</b>
+                    <label>
+                      Text rotate <b>{Math.round(selectedMarker.labelRotation)}°</b>
+                      <input type="range" min="-180" max="180" value={selectedMarker.labelRotation} onChange={(event) => updateSelectedMarker({ labelRotation: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      Text size <b>{selectedMarker.labelScale.toFixed(1)}×</b>
+                      <input type="range" min="0.4" max="3" step="0.1" value={selectedMarker.labelScale} onChange={(event) => updateSelectedMarker({ labelScale: Number(event.target.value) })} />
+                    </label>
+                    <div className="dimension-flips">
+                      <button className={selectedMarker.labelFlipX ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipX: !selectedMarker.labelFlipX })}>Flip text H</button>
+                      <button className={selectedMarker.labelFlipY ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipY: !selectedMarker.labelFlipY })}>Flip text V</button>
+                    </div>
+                    <small>Drag the dimension text itself in the preview to move it separately.</small>
+                  </div>
                   <button
                     className="delete-dimension"
                     onClick={() => {
@@ -1848,7 +1902,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || textDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || textDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -1868,6 +1922,7 @@ function App() {
                 setStickerResizeDrag(null);
                 setOverlayDrag(null);
                 setMarkerDrag(null);
+                setMarkerLabelDrag(null);
                 setTextDrag(null);
               }}
             >
@@ -1943,31 +1998,47 @@ function App() {
                   )}
                   {addingPolygonPoint && <span className="drag-hint">CLICK TO ADD A POLYGON POINT</span>}
                   {dimensionMarkers.map((marker) => (
-                    <div
-                      key={marker.id}
-                      className={
-                        marker.id === selectedMarkerId
-                          ? `dimension-marker ${marker.endStyle} selected editable`
-                          : `dimension-marker ${marker.endStyle} editable`
-                      }
-                      onPointerDown={(event) => beginMarkerDrag(event, marker)}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedMarkerId(marker.id);
-                      }}
-                      style={{
-                        left: `${marker.position.x * 100}%`,
-                        top: `${marker.position.y * 100}%`,
-                        width: `${marker.length}%`,
-                        transform: `translate(-50%, -50%) rotate(${marker.rotation}deg)`,
-                        color: marker.color,
-                        borderBottomColor: marker.color,
-                        borderBottomWidth: `${marker.thickness}px`,
-                        "--dimension-color": marker.color,
-                        "--dimension-width": `${marker.thickness}px`,
-                      } as CSSProperties}
-                    >
-                      <span>{dimensionLabel(marker)}</span>
+                    <div key={marker.id} className="dimension-group">
+                      <div
+                        className={marker.id === selectedMarkerId ? "dimension-line selected editable" : "dimension-line editable"}
+                        onPointerDown={(event) => beginMarkerDrag(event, marker)}
+                        onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
+                        style={{
+                          left: `${marker.position.x * 100}%`,
+                          top: `${marker.position.y * 100}%`,
+                          width: `${marker.length}%`,
+                          transform: `translate(-50%, -50%) rotate(${marker.rotation}deg)`,
+                        }}
+                      >
+                        <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
+                          <line x1="0" y1="10" x2="100" y2="10" stroke={marker.color} strokeWidth={marker.thickness} vectorEffect="non-scaling-stroke" />
+                          {marker.endStyle === "arrows" && (
+                            <>
+                              <polygon points="0,10 7,2 7,18" fill={marker.color} />
+                              <polygon points="100,10 93,2 93,18" fill={marker.color} />
+                            </>
+                          )}
+                          {marker.endStyle === "ticks" && (
+                            <>
+                              <line x1="0" y1="2" x2="0" y2="18" stroke={marker.color} strokeWidth={marker.thickness} vectorEffect="non-scaling-stroke" />
+                              <line x1="100" y1="2" x2="100" y2="18" stroke={marker.color} strokeWidth={marker.thickness} vectorEffect="non-scaling-stroke" />
+                            </>
+                          )}
+                        </svg>
+                      </div>
+                      <div
+                        className="dimension-label editable"
+                        onPointerDown={(event) => beginMarkerLabelDrag(event, marker)}
+                        onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
+                        style={{
+                          left: `${marker.labelPosition.x * 100}%`,
+                          top: `${marker.labelPosition.y * 100}%`,
+                          color: marker.color,
+                          transform: `translate(-50%, -50%) rotate(${marker.labelRotation}deg) scale(${marker.labelScale * (marker.labelFlipX ? -1 : 1)}, ${marker.labelScale * (marker.labelFlipY ? -1 : 1)})`,
+                        }}
+                      >
+                        {dimensionLabel(marker)}
+                      </div>
                     </div>
                   ))}
                   {textLayers.map((layer) => (
