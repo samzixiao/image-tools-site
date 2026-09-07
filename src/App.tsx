@@ -821,8 +821,8 @@ function App() {
   function dimensionLabel(marker: DimensionMarker) {
     const value = Number(marker.value) || 0;
     return marker.unit === "cm"
-      ? `${value.toFixed(2)} cm / ${(value / 2.54).toFixed(2)} in`
-      : `${value.toFixed(2)} in / ${(value * 2.54).toFixed(2)} cm`;
+      ? `${marker.value || "0"} cm / ${(value / 2.54).toFixed(2)} in`
+      : `${marker.value || "0"} in / ${(value * 2.54).toFixed(2)} cm`;
   }
   function drawDimensionMarker(
     ctx: CanvasRenderingContext2D,
@@ -864,7 +864,7 @@ function App() {
       ctx.lineTo(length / 2, arrow * 0.8);
       ctx.stroke();
     }
-    ctx.font = `500 ${fontSize}px Inter, Arial, sans-serif`;
+    ctx.font = `400 ${fontSize}px Inter, Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillStyle = marker.color;
