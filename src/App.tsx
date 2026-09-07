@@ -250,7 +250,8 @@ function App() {
       mode: "crop" | "fit";
     } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
-    overlayInput = useRef<HTMLInputElement>(null);
+    overlayInput = useRef<HTMLInputElement>(null),
+    privacyInput = useRef<HTMLInputElement>(null);
   const output =
       preset.id === "custom"
         ? custom
@@ -572,6 +573,7 @@ function App() {
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
+    if (originalUrl) setUrl(originalUrl);
     setZoom(1);
     setRotation(0);
     setFlipX(false);
@@ -876,7 +878,7 @@ function App() {
     );
     ctx.restore();
   }
-  function drawPrivacySticker(
+  async function drawPrivacySticker(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
@@ -884,6 +886,18 @@ function App() {
   ) {
     ctx.save();
     const size = Math.max(28, (width * cover.size) / 100);
+    if (cover.kind.startsWith("blob:")) {
+      const sticker = await loadImage(cover.kind);
+      ctx.drawImage(
+        sticker,
+        cover.position.x * width - size / 2,
+        cover.position.y * height - size / 2,
+        size,
+        size,
+      );
+      ctx.restore();
+      return;
+    }
     ctx.font = `${size}px "Segoe UI Emoji", Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -975,11 +989,10 @@ function App() {
     }
     drawText(ctx, canvas.width, canvas.height);
     drawAnnotations(ctx, canvas.width, canvas.height);
-    privacyCovers
-      .filter((cover) => cover.kind !== "mosaic")
-      .forEach((cover) =>
-        drawPrivacySticker(ctx, canvas.width, canvas.height, cover),
-      );
+    for (const cover of privacyCovers.filter(
+      (item) => item.kind !== "mosaic",
+    ))
+      await drawPrivacySticker(ctx, canvas.width, canvas.height, cover);
     if (overlayUrl) {
       const overlay = await loadImage(overlayUrl);
       const targetWidth = canvas.width * 0.22,
@@ -1139,7 +1152,7 @@ function App() {
                 <button
                   className={shape === item ? "shape active" : "shape"}
                   key={item}
-                  onClick={() => setShape(item)}
+                  onClick={() => setShape(shape === item ? "original" : item)}
                 >
                   <span className={`shape-icon ${item}`}>
                     {shapeSymbol[item]}
@@ -1259,6 +1272,22 @@ function App() {
                   }}
                 />
               </label>
+              <button onClick={() => privacyInput.current?.click()} disabled={!url}>
+                Add custom sticker
+              </button>
+              <input
+                ref={privacyInput}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setPrivacySticker(URL.createObjectURL(file));
+                  setPlacingSticker(true);
+                  event.target.value = "";
+                }}
+              />
               <button
                 className={placingSticker ? "place active" : "place"}
                 disabled={!privacySticker || !url}
@@ -1809,7 +1838,13 @@ function App() {
                             : undefined,
                       }}
                     >
-                      {cover.kind === "mosaic" ? "▦" : cover.kind}
+                      {cover.kind === "mosaic" ? (
+                        "▦"
+                      ) : cover.kind.startsWith("blob:") ? (
+                        <img src={cover.kind} alt="Custom privacy sticker" />
+                      ) : (
+                        cover.kind
+                      )}
                       {selectedCoverId === cover.id && (
                         <button
                           className="sticker-resize-handle"
@@ -1868,13 +1903,7 @@ function App() {
               <button onClick={() => setZoom(1)} disabled={!url}>{Math.round(zoom * 100)}%</button>
               <span></span>
               <button
-                onClick={() => {
-                  setImageOffset({ x: 0, y: 0 });
-                  setZoom(1);
-                  setRotation(0);
-                  setFlipX(false);
-                  setFlipY(false);
-                }}
+                onClick={resetEdits}
                 disabled={!url}
               >
                 Reset view

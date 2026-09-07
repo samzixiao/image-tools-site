@@ -340,7 +340,7 @@
 .crop {
   position: absolute;
   border: 2px solid #f27661;
-  box-shadow: 0 0 0 9999px #19221d55;
+  box-shadow: 0 0 0 9999px #eef0eb;
   cursor: grab;
   display: grid;
   place-items: end center;
@@ -1022,6 +1022,12 @@ footer {
 .privacy-mask-preview.editable {
   pointer-events: auto;
   cursor: move;
+}
+.privacy-sticker-preview img {
+  display: block;
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
 }
 .sticker-resize-handle {
   position: absolute;
