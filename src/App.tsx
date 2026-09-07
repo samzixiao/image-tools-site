@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent, PointerEvent } from "react";
+import type { ChangeEvent, CSSProperties, PointerEvent } from "react";
 import "./App.css";
 
 type Format = "image/jpeg" | "image/png" | "image/webp";
@@ -28,6 +28,15 @@ type DimensionMarker = {
   position: { x: number; y: number };
   length: number;
   rotation: number;
+  color: string;
+  thickness: number;
+};
+type TextLayer = {
+  id: number;
+  content: string;
+  color: string;
+  size: number;
+  position: { x: number; y: number };
 };
 type Preset = {
   id: string;
@@ -183,12 +192,14 @@ function App() {
     [transparentBackground, setTransparentBackground] = useState(false),
     [borderColor, setBorderColor] = useState("#e66d5b"),
     [borderWidth, setBorderWidth] = useState(0);
-  const [text, setText] = useState(""),
-    [textColor, setTextColor] = useState("#ffffff"),
-    [textSize, setTextSize] = useState(42),
-    [textPosition, setTextPosition] = useState<"top" | "center" | "bottom">(
-      "bottom",
-    );
+  const [textLayers, setTextLayers] = useState<TextLayer[]>([]),
+    [selectedTextId, setSelectedTextId] = useState<number | null>(null);
+  const [textDrag, setTextDrag] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    position: TextLayer["position"];
+  } | null>(null);
   const [overlayUrl, setOverlayUrl] = useState(""),
     [overlayOpacity, setOverlayOpacity] = useState(80),
     [overlayPosition, setOverlayPosition] = useState<
@@ -393,6 +404,14 @@ function App() {
       setDimensionMarkers((current) => current.map((marker) => marker.id === markerDrag.id ? { ...marker, position } : marker));
       return;
     }
+    if (textDrag) {
+      const position = {
+        x: Math.min(0.94, Math.max(0.06, textDrag.position.x + (event.clientX - textDrag.x) / box.width)),
+        y: Math.min(0.94, Math.max(0.06, textDrag.position.y + (event.clientY - textDrag.y) / box.height)),
+      };
+      setTextLayers((current) => current.map((layer) => layer.id === textDrag.id ? { ...layer, position } : layer));
+      return;
+    }
     if (overlayDrag) {
       setOverlayOffset({
         x: Math.min(0.9, Math.max(0.1, overlayDrag.position.x + (event.clientX - overlayDrag.x) / box.width)),
@@ -525,7 +544,7 @@ function App() {
   function cropZoom(delta: number) {
     if (!url) return;
     const sourceRatio = natural.width / natural.height,
-      width = Math.min(1, Math.max(aspect / sourceRatio, crop.width + delta)),
+      width = Math.min(1, Math.max(aspect / sourceRatio, crop.width - delta)),
       height = Math.min(1, (width / aspect) * sourceRatio);
     setCrop({
       width,
@@ -533,6 +552,13 @@ function App() {
       x: Math.min(crop.x, 1 - width),
       y: Math.min(crop.y, 1 - height),
     });
+    if (preset.id === "custom") {
+      setCustomFrame((frame) => {
+        const scale = Math.min(0.96 / Math.max(frame.width, frame.height), Math.max(0.12 / Math.min(frame.width, frame.height), 1 - delta));
+        const nextWidth = frame.width * scale, nextHeight = frame.height * scale;
+        return { width: nextWidth, height: nextHeight, x: (1 - nextWidth) / 2, y: (1 - nextHeight) / 2 };
+      });
+    } else setPresetFrameScale((value) => Math.min(1.17, Math.max(0.35, value * (1 - delta))));
   }
   function beginFrameResize(
     event: PointerEvent<HTMLButtonElement>,
@@ -581,6 +607,11 @@ function App() {
     setSelectedMarkerId(marker.id);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
+  function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
+    event.stopPropagation();
+    setSelectedTextId(layer.id);
+    setTextDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
+  }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
     if (originalUrl) setUrl(originalUrl);
@@ -607,7 +638,8 @@ function App() {
     setBackground("#ffffff");
     setTransparentBackground(false);
     setBorderWidth(0);
-    setText("");
+    setTextLayers([]);
+    setSelectedTextId(null);
     setOverlayUrl("");
     setExpandMode("none");
     setPrivacySticker("");
@@ -716,38 +748,11 @@ function App() {
     }
     if (shape === "heart") {
       ctx.moveTo(width / 2, height * 0.92);
-      ctx.bezierCurveTo(
-        -width * 0.1,
-        height * 0.55,
-        width * 0.08,
-        height * 0.08,
-        width * 0.3,
-        height * 0.2,
-      );
-      ctx.bezierCurveTo(
-        width * 0.43,
-        height * 0.02,
-        width / 2,
-        height * 0.18,
-        width / 2,
-        height * 0.3,
-      );
-      ctx.bezierCurveTo(
-        width / 2,
-        height * 0.18,
-        width * 0.57,
-        height * 0.02,
-        width * 0.7,
-        height * 0.2,
-      );
-      ctx.bezierCurveTo(
-        width * 0.92,
-        height * 0.08,
-        width * 1.1,
-        height * 0.55,
-        width / 2,
-        height * 0.92,
-      );
+      ctx.bezierCurveTo(0, height * 0.62, 0, height * 0.22, width * 0.22, height * 0.12);
+      ctx.bezierCurveTo(width * 0.36, height * 0.055, width * 0.47, height * 0.15, width / 2, height * 0.26);
+      ctx.bezierCurveTo(width * 0.53, height * 0.15, width * 0.64, height * 0.055, width * 0.78, height * 0.12);
+      ctx.bezierCurveTo(width, height * 0.22, width, height * 0.62, width / 2, height * 0.92);
+      ctx.closePath();
       return;
     }
     if (shape === "triangle") {
@@ -768,7 +773,7 @@ function App() {
             ? 0.48
             : shape === "badge"
               ? i % 2
-                ? 0.43
+                ? 0.39
                 : 0.48
               : i % 2
                 ? 0.32
@@ -825,9 +830,9 @@ function App() {
     ctx.save();
     ctx.translate(marker.position.x * width, marker.position.y * width);
     ctx.rotate((marker.rotation * Math.PI) / 180);
-    ctx.strokeStyle = "#e66d5b";
-    ctx.fillStyle = "#c65d4d";
-    ctx.lineWidth = Math.max(2, width / 550);
+    ctx.strokeStyle = marker.color;
+    ctx.fillStyle = marker.color;
+    ctx.lineWidth = Math.max(marker.thickness, width / 550);
     ctx.beginPath();
     ctx.moveTo(-length / 2, 0);
     ctx.lineTo(length / 2, 0);
@@ -844,27 +849,22 @@ function App() {
     ctx.fillText(dimensionLabel(marker), 0, -arrow * 0.85);
     ctx.restore();
   }
-  function drawText(
+  function drawTextLayer(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
+    layer: TextLayer,
   ) {
-    if (!text.trim()) return;
+    if (!layer.content.trim()) return;
     ctx.save();
-    const size = Math.max(16, (width * textSize) / 1080);
+    const size = Math.max(16, (width * layer.size) / 1080);
     ctx.font = `700 ${size}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = textColor;
+    ctx.fillStyle = layer.color;
     ctx.shadowColor = "#00000099";
     ctx.shadowBlur = size * 0.15;
-    const y =
-      textPosition === "top"
-        ? size * 1.2
-        : textPosition === "center"
-          ? height / 2
-          : height - size * 1.2;
-    ctx.fillText(text, width / 2, y, width * 0.9);
+    ctx.fillText(layer.content, layer.position.x * width, layer.position.y * height, width * 0.9);
     ctx.restore();
   }
   function drawExpansion(
@@ -1009,7 +1009,7 @@ function App() {
       ctx.stroke();
       ctx.restore();
     }
-    drawText(ctx, canvas.width, canvas.height);
+    textLayers.forEach((layer) => drawTextLayer(ctx, canvas.width, canvas.height, layer));
     dimensionMarkers.forEach((marker) =>
       drawDimensionMarker(ctx, canvas.width, marker),
     );
@@ -1045,6 +1045,7 @@ function App() {
   const selectedMarker = dimensionMarkers.find(
     (marker) => marker.id === selectedMarkerId,
   );
+  const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
     setDimensionMarkers((current) =>
@@ -1052,6 +1053,10 @@ function App() {
         marker.id === selectedMarkerId ? { ...marker, ...patch } : marker,
       ),
     );
+  }
+  function updateSelectedText(patch: Partial<TextLayer>) {
+    if (selectedTextId === null) return;
+    setTextLayers((current) => current.map((layer) => layer.id === selectedTextId ? { ...layer, ...patch } : layer));
   }
   return (
     <div className="app-shell">
@@ -1466,45 +1471,54 @@ function App() {
               sub="Add a caption, background, or border"
             />
             <div className="text-panel">
-              <input
-                placeholder="Caption or watermark"
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-              />
-              <div>
-                <label>
-                  Text{" "}
+              <button
+                className="add-text"
+                disabled={!url}
+                onClick={() => {
+                  const id = Date.now();
+                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 } }]);
+                  setSelectedTextId(id);
+                }}
+              >
+                ＋ Add text layer
+              </button>
+              {selectedText && (
+                <div className="text-editor">
                   <input
-                    type="color"
-                    value={textColor}
-                    onChange={(event) => setTextColor(event.target.value)}
+                    placeholder="Caption or watermark"
+                    value={selectedText.content}
+                    onChange={(event) => updateSelectedText({ content: event.target.value })}
                   />
-                </label>
-                <label>
-                  Size{" "}
-                  <input
-                    type="number"
-                    min="12"
-                    max="160"
-                    value={textSize}
-                    onChange={(event) =>
-                      setTextSize(Number(event.target.value))
-                    }
-                  />
-                </label>
-                <select
-                  value={textPosition}
-                  onChange={(event) =>
-                    setTextPosition(
-                      event.target.value as "top" | "center" | "bottom",
-                    )
-                  }
-                >
-                  <option value="top">Top</option>
-                  <option value="center">Center</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </div>
+                  <div>
+                    <label>
+                      Text{" "}
+                      <input type="color" value={selectedText.color} onChange={(event) => updateSelectedText({ color: event.target.value })} />
+                    </label>
+                    <label>
+                      Size{" "}
+                      <input type="number" min="12" max="160" value={selectedText.size} onChange={(event) => updateSelectedText({ size: Number(event.target.value) })} />
+                    </label>
+                    <button
+                      className="delete-text"
+                      onClick={() => {
+                        setTextLayers((current) => current.filter((layer) => layer.id !== selectedText.id));
+                        setSelectedTextId(null);
+                      }}
+                    >
+                      Delete text
+                    </button>
+                  </div>
+                </div>
+              )}
+              {textLayers.length > 0 && (
+                <div className="text-layer-list">
+                  {textLayers.map((layer, index) => (
+                    <button key={layer.id} className={layer.id === selectedTextId ? "active" : ""} onClick={() => setSelectedTextId(layer.id)}>
+                      Text {index + 1} · {layer.content || "Empty"}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div>
                 <label>
                   Background{" "}
@@ -1648,6 +1662,8 @@ function App() {
                       position: { x: 0.5, y: 0.76 },
                       length: 58,
                       rotation: 0,
+                      color: "#e66d5b",
+                      thickness: 2,
                     },
                   ]);
                   setSelectedMarkerId(id);
@@ -1710,6 +1726,13 @@ function App() {
                         })
                       }
                     />
+                  </label>
+                  <label>
+                    Arrow color <input type="color" value={selectedMarker.color} onChange={(event) => updateSelectedMarker({ color: event.target.value })} />
+                  </label>
+                  <label>
+                    Stroke <b>{selectedMarker.thickness}px</b>
+                    <input type="range" min="1" max="10" value={selectedMarker.thickness} onChange={(event) => updateSelectedMarker({ thickness: Number(event.target.value) })} />
                   </label>
                   <button
                     className="delete-dimension"
@@ -1775,7 +1798,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || textDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -1795,6 +1818,7 @@ function App() {
                 setStickerResizeDrag(null);
                 setOverlayDrag(null);
                 setMarkerDrag(null);
+                setTextDrag(null);
               }}
             >
               {url ? (
@@ -1813,7 +1837,10 @@ function App() {
                     src={url}
                     alt="Preview"
                     className={`preview-image ${shape}`}
-                    style={previewStyle}
+                    style={{
+                      ...previewStyle,
+                      clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
+                    }}
                   />
                   {sizeSelected && mode === "crop" && shape !== "polygon" && (
                     <div
@@ -1864,11 +1891,7 @@ function App() {
                       ))}
                     </svg>
                   )}
-                  <span className="drag-hint">
-                    {addingPolygonPoint
-                      ? "CLICK TO ADD A POLYGON POINT"
-                      : "DRAG PHOTO TO POSITION"}
-                  </span>
+                  {addingPolygonPoint && <span className="drag-hint">CLICK TO ADD A POLYGON POINT</span>}
                   {dimensionMarkers.map((marker) => (
                     <div
                       key={marker.id}
@@ -1887,22 +1910,32 @@ function App() {
                         top: `${marker.position.y * 100}%`,
                         width: `${marker.length}%`,
                         transform: `translate(-50%, -50%) rotate(${marker.rotation}deg)`,
-                      }}
+                        color: marker.color,
+                        borderBottomColor: marker.color,
+                        borderBottomWidth: `${marker.thickness}px`,
+                        "--dimension-color": marker.color,
+                        "--dimension-width": `${marker.thickness}px`,
+                      } as CSSProperties}
                     >
                       <span>{dimensionLabel(marker)}</span>
                     </div>
                   ))}
-                  {text && (
+                  {textLayers.map((layer) => (
                     <div
-                      className={`text-preview ${textPosition}`}
+                      key={layer.id}
+                      className={layer.id === selectedTextId ? "text-preview selected editable" : "text-preview editable"}
+                      onPointerDown={(event) => beginTextDrag(event, layer)}
+                      onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
                       style={{
-                        color: textColor,
-                        fontSize: `${Math.max(14, textSize / 2)}px`,
+                        color: layer.color,
+                        fontSize: `${Math.max(14, layer.size / 2)}px`,
+                        left: `${layer.position.x * 100}%`,
+                        top: `${layer.position.y * 100}%`,
                       }}
                     >
-                      {text}
+                      {layer.content}
                     </div>
-                  )}
+                  ))}
                   {privacyCovers.map((cover) => (
                     <span
                       key={cover.id}

@@ -702,19 +702,50 @@ footer {
   border-radius: 5px;
   background: #fff;
 }
-.text-panel > input {
+.add-text,
+.delete-text {
+  border: 1px solid #e77967;
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #fff5f1;
+  color: #bd594b;
+  font-size: 10px;
+}
+.add-text:disabled { opacity: 0.45; cursor: not-allowed; }
+.text-editor {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid #eceee9;
+}
+.text-editor > input {
   width: 100%;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 7px;
   font-size: 10px;
 }
+.text-editor > div,
 .text-panel > div {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-top: 8px;
 }
+.text-layer-list {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.text-layer-list button {
+  border: 1px solid #e0e3dd;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: #fff;
+  color: #7d827a;
+  font-size: 9px;
+}
+.text-layer-list button.active { border-color: #e77967; background: #fff2ed; color: #bd594b; }
+.delete-text { border-color: #efd3cd; background: #fff; color: #a5685d; }
 .text-panel label {
   display: flex;
   align-items: center;
@@ -743,25 +774,18 @@ footer {
 }
 .text-preview {
   position: absolute;
-  left: 5%;
-  right: 5%;
   z-index: 5;
   text-align: center;
   font-weight: 700;
   text-shadow: 0 2px 8px #000;
+  transform: translate(-50%, -50%);
+  max-width: 88%;
+  cursor: move;
   pointer-events: none;
-  overflow: hidden;
+  white-space: pre-wrap;
 }
-.text-preview.top {
-  top: 6%;
-}
-.text-preview.center {
-  top: 50%;
-  transform: translateY(-50%);
-}
-.text-preview.bottom {
-  bottom: 6%;
-}
+.text-preview.editable { pointer-events: auto; }
+.text-preview.selected { outline: 1px dashed #fff; }
 .border-preview {
   position: absolute;
   inset: 0;
@@ -1285,10 +1309,10 @@ footer {
 .preview-image.heart,
 .expanded-background.heart {
   clip-path: none;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 90C-8 55 8 12 30 18C43 2 50 18 50 28C50 18 57 2 70 18C92 12 108 55 50 90Z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 90C-8 55 8 12 30 18C43 2 50 18 50 28C50 18 57 2 70 18C92 12 108 55 50 90Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E");
   mask-size: 100% 100%;
   mask-repeat: no-repeat;
 }
@@ -1315,7 +1339,7 @@ footer {
   position: absolute;
   z-index: 11;
   height: 22px;
-  border-bottom: 2px solid #e66d5b;
+  border-bottom: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
   color: #c65d4d;
   font: 700 10px "DM Mono", monospace;
   pointer-events: none;
@@ -1332,16 +1356,16 @@ footer {
   bottom: -5px;
   width: 10px;
   height: 10px;
-  border-bottom: 2px solid #e66d5b;
+  border-bottom: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
 }
 .dimension-marker:before {
   left: -2px;
-  border-left: 2px solid #e66d5b;
+  border-left: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
   transform: rotate(45deg);
 }
 .dimension-marker:after {
   right: -2px;
-  border-right: 2px solid #e66d5b;
+  border-right: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
   transform: rotate(-45deg);
 }
 .dimension-marker span {
@@ -1428,23 +1452,12 @@ footer {
 .expanded-background.badge {
   clip-path: polygon(
     50% 0,
-    61% 17%,
-    80% 10%,
-    83% 30%,
-    100% 40%,
-    88% 55%,
-    94% 75%,
-    73% 76%,
-    62% 96%,
-    50% 80%,
-    38% 96%,
-    27% 76%,
-    6% 75%,
-    12% 55%,
-    0 40%,
-    17% 30%,
-    20% 10%,
-    39% 17%
+    58% 12%, 70% 4%, 72% 18%, 86% 15%, 82% 29%,
+    96% 34%, 84% 43%, 99% 50%, 84% 57%, 96% 66%,
+    82% 71%, 86% 85%, 72% 82%, 70% 96%, 58% 88%,
+    50% 100%, 42% 88%, 30% 96%, 28% 82%, 14% 85%,
+    18% 71%, 4% 66%, 16% 57%, 1% 50%, 16% 43%,
+    4% 34%, 18% 29%, 14% 15%, 28% 18%, 30% 4%, 42% 12%
   );
 }
 .transform-tools {
