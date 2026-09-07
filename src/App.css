@@ -753,6 +753,11 @@ footer {
   color: #777;
   font-size: 9px;
 }
+.outline-toggle {
+  grid-column: span 1;
+  white-space: nowrap;
+}
+.outline-toggle input { accent-color: #e87562; }
 .text-panel input[type="color"] {
   width: 28px;
   height: 25px;
@@ -1353,20 +1358,20 @@ footer {
 .dimension-marker:after {
   content: "";
   position: absolute;
-  bottom: -5px;
-  width: 10px;
-  height: 10px;
-  border-bottom: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
+  bottom: -7px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  filter: drop-shadow(0 0 0 var(--dimension-outline, transparent));
 }
 .dimension-marker:before {
-  left: -2px;
-  border-left: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
-  transform: rotate(45deg);
+  left: calc(-1 * var(--dimension-width, 2px));
+  border-right: 11px solid var(--dimension-color, #e66d5b);
 }
 .dimension-marker:after {
-  right: -2px;
-  border-right: var(--dimension-width, 2px) solid var(--dimension-color, #e66d5b);
-  transform: rotate(-45deg);
+  right: calc(-1 * var(--dimension-width, 2px));
+  border-left: 11px solid var(--dimension-color, #e66d5b);
 }
 .dimension-marker span {
   display: block;
@@ -1376,6 +1381,7 @@ footer {
   margin: 0 auto 4px;
   padding: 3px 5px;
   white-space: nowrap;
+  -webkit-text-stroke: var(--dimension-outline-width, 0px) var(--dimension-outline, transparent);
 }
 .tool-cards {
   padding: 72px 20px 78px;
