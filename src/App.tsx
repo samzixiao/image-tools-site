@@ -21,6 +21,14 @@ type PrivacyCover = {
   size: number;
   position: { x: number; y: number };
 };
+type DimensionMarker = {
+  id: number;
+  value: string;
+  unit: "cm" | "in";
+  position: { x: number; y: number };
+  length: number;
+  rotation: number;
+};
 type Preset = {
   id: string;
   group: string;
@@ -161,10 +169,6 @@ function App() {
     [rotation, setRotation] = useState(0),
     [flipX, setFlipX] = useState(false),
     [flipY, setFlipY] = useState(false);
-  const [measure, setMeasure] = useState(false),
-    [unit, setUnit] = useState<"cm" | "in">("cm"),
-    [dims, setDims] = useState({ width: "60", height: "40", depth: "20" }),
-    [label, setLabel] = useState("");
   const [adjust, setAdjust] = useState({
     brightness: 100,
     contrast: 100,
@@ -191,17 +195,19 @@ function App() {
       "top-left" | "top-right" | "bottom-left" | "bottom-right"
     >("bottom-right"),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
-  const [overlayOffset, setOverlayOffset] = useState({ x: 0.84, y: 0.84 }),
-    [measurePosition, setMeasurePosition] = useState({ x: 0.5, y: 0.78 });
+  const [overlayOffset, setOverlayOffset] = useState({ x: 0.84, y: 0.84 });
   const [overlayDrag, setOverlayDrag] = useState<{
     x: number;
     y: number;
     position: typeof overlayOffset;
   } | null>(null);
-  const [measureDrag, setMeasureDrag] = useState<{
+  const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
+    [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
+  const [markerDrag, setMarkerDrag] = useState<{
+    id: number;
     x: number;
     y: number;
-    position: typeof measurePosition;
+    position: DimensionMarker["position"];
   } | null>(null);
   const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
     [expandStrength, setExpandStrength] = useState(35),
@@ -379,17 +385,18 @@ function App() {
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
+    if (markerDrag) {
+      const position = {
+        x: Math.min(0.9, Math.max(0.1, markerDrag.position.x + (event.clientX - markerDrag.x) / box.width)),
+        y: Math.min(0.9, Math.max(0.1, markerDrag.position.y + (event.clientY - markerDrag.y) / box.height)),
+      };
+      setDimensionMarkers((current) => current.map((marker) => marker.id === markerDrag.id ? { ...marker, position } : marker));
+      return;
+    }
     if (overlayDrag) {
       setOverlayOffset({
         x: Math.min(0.9, Math.max(0.1, overlayDrag.position.x + (event.clientX - overlayDrag.x) / box.width)),
         y: Math.min(0.9, Math.max(0.1, overlayDrag.position.y + (event.clientY - overlayDrag.y) / box.height)),
-      });
-      return;
-    }
-    if (measureDrag) {
-      setMeasurePosition({
-        x: Math.min(0.9, Math.max(0.1, measureDrag.position.x + (event.clientX - measureDrag.x) / box.width)),
-        y: Math.min(0.9, Math.max(0.15, measureDrag.position.y + (event.clientY - measureDrag.y) / box.height)),
       });
       return;
     }
@@ -569,9 +576,10 @@ function App() {
     event.stopPropagation();
     setOverlayDrag({ x: event.clientX, y: event.clientY, position: overlayOffset });
   }
-  function beginMeasureDrag(event: PointerEvent<HTMLDivElement>) {
+  function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
-    setMeasureDrag({ x: event.clientX, y: event.clientY, position: measurePosition });
+    setSelectedMarkerId(marker.id);
+    setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
@@ -600,7 +608,6 @@ function App() {
     setTransparentBackground(false);
     setBorderWidth(0);
     setText("");
-    setMeasure(false);
     setOverlayUrl("");
     setExpandMode("none");
     setPrivacySticker("");
@@ -610,6 +617,8 @@ function App() {
     setCustomFrame({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
     setPolygonPoints(defaultPolygonPoints);
     setAddingPolygonPoint(false);
+    setDimensionMarkers([]);
+    setSelectedMarkerId(null);
   }
   function removeSolidBackground() {
     if (!url) return;
@@ -799,39 +808,40 @@ function App() {
       }
     ctx.restore();
   }
-  function drawAnnotations(
+  function dimensionLabel(marker: DimensionMarker) {
+    const value = Number(marker.value) || 0;
+    return marker.unit === "cm"
+      ? `${value} cm / ${(value / 2.54).toFixed(1)} in`
+      : `${value} in / ${(value * 2.54).toFixed(1)} cm`;
+  }
+  function drawDimensionMarker(
     ctx: CanvasRenderingContext2D,
     width: number,
-    height: number,
+    marker: DimensionMarker,
   ) {
-    if (!measure) return;
-    const pad = Math.max(32, width / 18),
-      w = Number(dims.width) || 0,
-      h = Number(dims.height) || 0,
-      toDual = (value: number) =>
-        unit === "cm"
-          ? `${value} cm / ${(value / 2.54).toFixed(1)} in`
-          : `${value} in / ${(value * 2.54).toFixed(1)} cm`;
+    const length = (width * marker.length) / 100,
+      arrow = Math.max(8, width / 75),
+      fontSize = Math.max(16, width / 44);
     ctx.save();
-    ctx.translate(
-      (measurePosition.x - 0.5) * width * 0.35,
-      (measurePosition.y - 0.78) * height * 0.35,
-    );
+    ctx.translate(marker.position.x * width, marker.position.y * width);
+    ctx.rotate((marker.rotation * Math.PI) / 180);
     ctx.strokeStyle = "#e66d5b";
-    ctx.fillStyle = "#e66d5b";
-    ctx.lineWidth = Math.max(3, width / 500);
-    ctx.font = `bold ${Math.max(18, width / 42)}px Arial`;
+    ctx.fillStyle = "#c65d4d";
+    ctx.lineWidth = Math.max(2, width / 550);
     ctx.beginPath();
-    ctx.moveTo(pad, height - pad);
-    ctx.lineTo(width - pad, height - pad);
+    ctx.moveTo(-length / 2, 0);
+    ctx.lineTo(length / 2, 0);
+    ctx.moveTo(-length / 2 + arrow, -arrow * 0.65);
+    ctx.lineTo(-length / 2, 0);
+    ctx.lineTo(-length / 2 + arrow, arrow * 0.65);
+    ctx.moveTo(length / 2 - arrow, -arrow * 0.65);
+    ctx.lineTo(length / 2, 0);
+    ctx.lineTo(length / 2 - arrow, arrow * 0.65);
     ctx.stroke();
-    ctx.fillText(toDual(w), pad, height - pad - 12);
-    ctx.save();
-    ctx.translate(pad - 12, height - pad);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText(toDual(h), 0, 0);
-    ctx.restore();
-    if (label) ctx.fillText(label, pad, pad + 22);
+    ctx.font = `700 ${fontSize}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(dimensionLabel(marker), 0, -arrow * 0.85);
     ctx.restore();
   }
   function drawText(
@@ -1000,7 +1010,9 @@ function App() {
       ctx.restore();
     }
     drawText(ctx, canvas.width, canvas.height);
-    drawAnnotations(ctx, canvas.width, canvas.height);
+    dimensionMarkers.forEach((marker) =>
+      drawDimensionMarker(ctx, canvas.width, marker),
+    );
     for (const cover of privacyCovers.filter(
       (item) => item.kind !== "mosaic",
     ))
@@ -1030,6 +1042,17 @@ function App() {
     transform: `translate(${imageOffset.x * 100}cqw, ${imageOffset.y * 100}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
     filter: filterValue,
   };
+  const selectedMarker = dimensionMarkers.find(
+    (marker) => marker.id === selectedMarkerId,
+  );
+  function updateSelectedMarker(patch: Partial<DimensionMarker>) {
+    if (selectedMarkerId === null) return;
+    setDimensionMarkers((current) =>
+      current.map((marker) =>
+        marker.id === selectedMarkerId ? { ...marker, ...patch } : marker,
+      ),
+    );
+  }
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -1608,72 +1631,117 @@ function App() {
             <Step
               n="09"
               title="Product details"
-              sub="Optional bilingual size markers and text layer"
+              sub="Add movable bilingual dimension markers and a text layer"
             />
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={measure}
-                onChange={(event) => setMeasure(event.target.checked)}
-              />{" "}
-              Add dimension arrows
-            </label>
-            {measure && (
-              <div className="annotation">
-                <div className="unit-tabs">
+            <div className="dimension-panel">
+              <button
+                className="add-dimension"
+                disabled={!url}
+                onClick={() => {
+                  const id = Date.now();
+                  setDimensionMarkers((current) => [
+                    ...current,
+                    {
+                      id,
+                      value: "60",
+                      unit: "cm",
+                      position: { x: 0.5, y: 0.76 },
+                      length: 58,
+                      rotation: 0,
+                    },
+                  ]);
+                  setSelectedMarkerId(id);
+                }}
+              >
+                ＋ Add dimension arrow
+              </button>
+              {selectedMarker && (
+                <div className="dimension-editor">
+                  <label>
+                    Measurement
+                    <div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={selectedMarker.value}
+                        onChange={(event) =>
+                          updateSelectedMarker({ value: event.target.value })
+                        }
+                      />
+                      <select
+                        value={selectedMarker.unit}
+                        onChange={(event) =>
+                          updateSelectedMarker({
+                            unit: event.target.value as "cm" | "in",
+                          })
+                        }
+                      >
+                        <option value="cm">cm</option>
+                        <option value="in">inch</option>
+                      </select>
+                    </div>
+                    <small>{dimensionLabel(selectedMarker)}</small>
+                  </label>
+                  <label>
+                    Arrow length <b>{Math.round(selectedMarker.length)}%</b>
+                    <input
+                      type="range"
+                      min="20"
+                      max="90"
+                      value={selectedMarker.length}
+                      onChange={(event) =>
+                        updateSelectedMarker({
+                          length: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Rotate <b>{Math.round(selectedMarker.rotation)}°</b>
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      value={selectedMarker.rotation}
+                      onChange={(event) =>
+                        updateSelectedMarker({
+                          rotation: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
                   <button
-                    className={unit === "cm" ? "active" : ""}
-                    onClick={() => setUnit("cm")}
+                    className="delete-dimension"
+                    onClick={() => {
+                      setDimensionMarkers((current) =>
+                        current.filter((marker) => marker.id !== selectedMarker.id),
+                      );
+                      setSelectedMarkerId(null);
+                    }}
                   >
-                    cm + inch
-                  </button>
-                  <button
-                    className={unit === "in" ? "active" : ""}
-                    onClick={() => setUnit("in")}
-                  >
-                    inch + cm
+                    Delete selected arrow
                   </button>
                 </div>
-                <div className="three-inputs">
-                  <label>
-                    W
-                    <input
-                      value={dims.width}
-                      onChange={(event) =>
-                        setDims({ ...dims, width: event.target.value })
-                      }
-                    />
-                  </label>
-                  <label>
-                    H
-                    <input
-                      value={dims.height}
-                      onChange={(event) =>
-                        setDims({ ...dims, height: event.target.value })
-                      }
-                    />
-                  </label>
-                  <label>
-                    D
-                    <input
-                      value={dims.depth}
-                      onChange={(event) =>
-                        setDims({ ...dims, depth: event.target.value })
-                      }
-                    />
-                  </label>
+              )}
+              {dimensionMarkers.length > 0 && (
+                <div className="dimension-list">
+                  {dimensionMarkers.map((marker, index) => (
+                    <button
+                      key={marker.id}
+                      className={marker.id === selectedMarkerId ? "active" : ""}
+                      onClick={() => setSelectedMarkerId(marker.id)}
+                    >
+                      Arrow {index + 1} · {dimensionLabel(marker)}
+                    </button>
+                  ))}
                 </div>
-                <input
-                  className="label-input"
-                  placeholder="Product name or feature label"
-                  value={label}
-                  onChange={(event) => setLabel(event.target.value)}
-                />
-                <small className="hint">
-                  真实尺寸需要人工测量或已知参照物，照片本身不能自动推断准确厘米。
-                </small>
-              </div>
-            )}
+              )}
+              <small className="hint">
+                Add multiple arrows, then drag each arrow directly in the preview.
+                Enter either cm or inch; the other unit is shown automatically.
+              </small>
+            </div>
             <Step
               n="10"
               title="Fit & export"
@@ -1707,7 +1775,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -1726,7 +1794,7 @@ function App() {
                 setStickerDrag(null);
                 setStickerResizeDrag(null);
                 setOverlayDrag(null);
-                setMeasureDrag(null);
+                setMarkerDrag(null);
               }}
             >
               {url ? (
@@ -1801,23 +1869,29 @@ function App() {
                       ? "CLICK TO ADD A POLYGON POINT"
                       : "DRAG PHOTO TO POSITION"}
                   </span>
-                  {measure && (
+                  {dimensionMarkers.map((marker) => (
                     <div
-                      className="measure-preview editable"
-                      onPointerDown={beginMeasureDrag}
+                      key={marker.id}
+                      className={
+                        marker.id === selectedMarkerId
+                          ? "dimension-marker selected editable"
+                          : "dimension-marker editable"
+                      }
+                      onPointerDown={(event) => beginMarkerDrag(event, marker)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedMarkerId(marker.id);
+                      }}
                       style={{
-                        left: `${measurePosition.x * 100}%`,
-                        top: `${measurePosition.y * 100}%`,
+                        left: `${marker.position.x * 100}%`,
+                        top: `${marker.position.y * 100}%`,
+                        width: `${marker.length}%`,
+                        transform: `translate(-50%, -50%) rotate(${marker.rotation}deg)`,
                       }}
                     >
-                      <span>
-                        {dims.width} cm /{" "}
-                        {(Number(dims.width) / 2.54).toFixed(1)} in
-                      </span>
-                      <i></i>
-                      <span>{label || "Product dimensions"}</span>
+                      <span>{dimensionLabel(marker)}</span>
                     </div>
-                  )}
+                  ))}
                   {text && (
                     <div
                       className={`text-preview ${textPosition}`}
