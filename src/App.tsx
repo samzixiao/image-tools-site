@@ -180,7 +180,18 @@ function App() {
     [stickerSize, setStickerSize] = useState(30),
     [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
     [placingSticker, setPlacingSticker] = useState(false);
-  const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 });
+  const [stickerDrag, setStickerDrag] = useState<{
+    x: number;
+    y: number;
+    position: typeof stickerPosition;
+  } | null>(null);
+  const [stickerResizeDrag, setStickerResizeDrag] = useState<{
+    x: number;
+    size: number;
+  } | null>(null);
+  const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 }),
+    [imageOffset, setImageOffset] = useState({ x: 0, y: 0 }),
+    [presetFrameOffset, setPresetFrameOffset] = useState({ x: 0, y: 0 });
   const [customFrame, setCustomFrame] = useState({
     x: 0.1,
     y: 0.1,
@@ -191,7 +202,8 @@ function App() {
     x: number;
     y: number;
     frame: typeof customFrame;
-    corner: "nw" | "ne" | "se" | "sw";
+    action: "move" | "resize";
+    corner?: "nw" | "ne" | "se" | "sw";
   } | null>(null);
   const [polygonPoints, setPolygonPoints] = useState([
     { x: 0.2, y: 0.2 },
@@ -207,6 +219,7 @@ function App() {
       y: number;
       crop: typeof crop;
       fitPosition: typeof fitPosition;
+      imageOffset: typeof imageOffset;
       mode: "crop" | "fit";
     } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
@@ -232,6 +245,20 @@ function App() {
               width: 0.82 * aspect,
               height: 0.82,
             };
+  const visibleCropFrame =
+    preset.id === "custom"
+      ? customFrame
+      : {
+          ...cropFrame,
+          x: Math.min(
+            1 - cropFrame.width,
+            Math.max(0, cropFrame.x + presetFrameOffset.x),
+          ),
+          y: Math.min(
+            1 - cropFrame.height,
+            Math.max(0, cropFrame.y + presetFrameOffset.y),
+          ),
+        };
 
   useEffect(() => {
     if (!url) return;
@@ -255,6 +282,8 @@ function App() {
     setFileName(file.name);
     setUrl(nextUrl);
     setOriginalUrl(nextUrl);
+    setImageOffset({ x: 0, y: 0 });
+    setPresetFrameOffset({ x: 0, y: 0 });
   }
   function loadOverlay(file?: File) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -262,6 +291,7 @@ function App() {
   }
   function choosePreset(next: Preset) {
     setPreset(next);
+    setPresetFrameOffset({ x: 0, y: 0 });
     if (next.id !== "custom")
       setCustom({ width: next.width, height: next.height });
   }
@@ -304,11 +334,28 @@ function App() {
       y: event.clientY,
       crop,
       fitPosition,
+      imageOffset,
       mode,
     });
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
+    if (stickerResizeDrag) {
+      setStickerSize(
+        Math.min(
+          70,
+          Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100),
+        ),
+      );
+      return;
+    }
+    if (stickerDrag) {
+      setStickerPosition({
+        x: Math.min(0.95, Math.max(0.05, stickerDrag.position.x + (event.clientX - stickerDrag.x) / box.width)),
+        y: Math.min(0.95, Math.max(0.05, stickerDrag.position.y + (event.clientY - stickerDrag.y) / box.height)),
+      });
+      return;
+    }
     if (polygonDrag !== null) {
       setPolygonPoints((current) =>
         current.map((point, index) =>
@@ -329,6 +376,22 @@ function App() {
         right = frameDrag.frame.x + frameDrag.frame.width,
         bottom = frameDrag.frame.y + frameDrag.frame.height;
       let next = { ...frameDrag.frame };
+      if (frameDrag.action === "move") {
+        next.x = Math.min(1 - next.width, Math.max(0, next.x + dx));
+        next.y = Math.min(1 - next.height, Math.max(0, next.y + dy));
+        setCrop((current) => ({
+          ...current,
+          x: Math.min(Math.max(0, current.x + dx), 1 - current.width),
+          y: Math.min(Math.max(0, current.y + dy), 1 - current.height),
+        }));
+        if (preset.id === "custom") setCustomFrame(next);
+        else
+          setPresetFrameOffset({
+            x: next.x - cropFrame.x,
+            y: next.y - cropFrame.y,
+          });
+        return;
+      }
       if (frameDrag.corner === "se") {
         next.width = Math.min(1 - next.x, Math.max(min, next.width + dx));
         next.height = Math.min(1 - next.y, Math.max(min, next.height + dy));
@@ -363,10 +426,14 @@ function App() {
       });
       return;
     }
+    setImageOffset({
+      x: Math.min(0.6, Math.max(-0.6, drag.imageOffset.x + dx)),
+      y: Math.min(0.6, Math.max(-0.6, drag.imageOffset.y + dy)),
+    });
     setCrop((current) => ({
       ...current,
-      x: Math.min(Math.max(0, drag.crop.x + dx), 1 - current.width),
-      y: Math.min(Math.max(0, drag.crop.y + dy), 1 - current.height),
+      x: Math.min(Math.max(0, drag.crop.x - dx), 1 - current.width),
+      y: Math.min(Math.max(0, drag.crop.y - dy), 1 - current.height),
     }));
   }
   function cropZoom(delta: number) {
@@ -390,8 +457,30 @@ function App() {
       x: event.clientX,
       y: event.clientY,
       frame: customFrame,
+      action: "resize",
       corner,
     });
+  }
+  function beginFrameMove(event: PointerEvent<HTMLSpanElement>) {
+    event.stopPropagation();
+    setFrameDrag({
+      x: event.clientX,
+      y: event.clientY,
+      frame: visibleCropFrame,
+      action: "move",
+    });
+  }
+  function beginStickerDrag(event: PointerEvent<HTMLSpanElement>) {
+    event.stopPropagation();
+    setStickerDrag({
+      x: event.clientX,
+      y: event.clientY,
+      position: stickerPosition,
+    });
+  }
+  function beginStickerResize(event: PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    setStickerResizeDrag({ x: event.clientX, size: stickerSize });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
@@ -400,6 +489,8 @@ function App() {
     setFlipX(false);
     setFlipY(false);
     setFitPosition({ x: 0.5, y: 0.5 });
+    setImageOffset({ x: 0, y: 0 });
+    setPresetFrameOffset({ x: 0, y: 0 });
     setShape("original");
     setAdjust({
       brightness: 100,
@@ -818,9 +909,13 @@ function App() {
   }
 
   const previewStyle = {
-    objectFit: "cover" as const,
-    objectPosition: `${crop.x * 100}% ${crop.y * 100}%`,
-    transform: `translate(${(crop.x - 0.5) * -34}cqw, ${(crop.y - 0.5) * -34}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
+    objectFit: "contain" as const,
+    objectPosition: "center" as const,
+    transform: `translate(${imageOffset.x * 100}cqw, ${imageOffset.y * 100}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
+    clipPath:
+      shape === "polygon"
+        ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})`
+        : undefined,
     filter: filterValue,
   };
   return (
@@ -1446,7 +1541,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -1462,6 +1557,8 @@ function App() {
                 setDrag(null);
                 setFrameDrag(null);
                 setPolygonDrag(null);
+                setStickerDrag(null);
+                setStickerResizeDrag(null);
               }}
             >
               {url ? (
@@ -1488,12 +1585,18 @@ function App() {
                         preset.id === "custom" ? "crop editable" : "crop"
                       }
                       style={{
-                        left: `${cropFrame.x * 100}%`,
-                        top: `${cropFrame.y * 100}%`,
-                        width: `${cropFrame.width * 100}%`,
-                        height: `${cropFrame.height * 100}%`,
+                        left: `${visibleCropFrame.x * 100}%`,
+                        top: `${visibleCropFrame.y * 100}%`,
+                        width: `${visibleCropFrame.width * 100}%`,
+                        height: `${visibleCropFrame.height * 100}%`,
                       }}
                     >
+                      <span
+                        className="crop-move-handle"
+                        onPointerDown={beginFrameMove}
+                      >
+                        MOVE FRAME
+                      </span>
                       {preset.id === "custom" &&
                         (["nw", "ne", "se", "sw"] as const).map((corner) => (
                           <button
@@ -1558,9 +1661,10 @@ function App() {
                     <span
                       className={
                         privacySticker === "mosaic"
-                          ? "privacy-mask-preview mosaic-mask-preview"
-                          : "privacy-sticker-preview"
+                          ? "privacy-mask-preview mosaic-mask-preview editable"
+                          : "privacy-sticker-preview editable"
                       }
+                      onPointerDown={beginStickerDrag}
                       style={{
                         left: `${stickerPosition.x * 100}%`,
                         top: `${stickerPosition.y * 100}%`,
@@ -1576,6 +1680,13 @@ function App() {
                       }}
                     >
                       {privacySticker === "mosaic" ? "▦" : privacySticker}
+                      <button
+                        className="sticker-resize-handle"
+                        aria-label="Resize privacy cover"
+                        onPointerDown={beginStickerResize}
+                      >
+                        ↘
+                      </button>
                     </span>
                   )}
                   {overlayUrl && (
