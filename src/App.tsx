@@ -15,6 +15,12 @@ type Shape =
   | "sticker"
   | "polygon";
 type ExpandMode = "none" | "blur" | "mirror" | "gradient" | "solid";
+type PrivacyCover = {
+  id: number;
+  kind: string;
+  size: number;
+  position: { x: number; y: number };
+};
 type Preset = {
   id: string;
   group: string;
@@ -128,6 +134,16 @@ const privacyStickers = [
   "😎",
   "😊",
 ];
+const defaultPolygonPoints = [
+  { x: 0.5, y: 0.12 },
+  { x: 0.72, y: 0.2 },
+  { x: 0.88, y: 0.5 },
+  { x: 0.72, y: 0.8 },
+  { x: 0.5, y: 0.88 },
+  { x: 0.28, y: 0.8 },
+  { x: 0.12, y: 0.5 },
+  { x: 0.28, y: 0.2 },
+];
 
 function App() {
   const [url, setUrl] = useState(""),
@@ -178,15 +194,18 @@ function App() {
     [expandStrength, setExpandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
     [stickerSize, setStickerSize] = useState(30),
-    [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
     [placingSticker, setPlacingSticker] = useState(false);
+  const [privacyCovers, setPrivacyCovers] = useState<PrivacyCover[]>([]),
+    [selectedCoverId, setSelectedCoverId] = useState<number | null>(null);
   const [stickerDrag, setStickerDrag] = useState<{
     x: number;
     y: number;
-    position: typeof stickerPosition;
+    id: number;
+    position: PrivacyCover["position"];
   } | null>(null);
   const [stickerResizeDrag, setStickerResizeDrag] = useState<{
     x: number;
+    id: number;
     size: number;
   } | null>(null);
   const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 }),
@@ -205,12 +224,7 @@ function App() {
     action: "move" | "resize";
     corner?: "nw" | "ne" | "se" | "sw";
   } | null>(null);
-  const [polygonPoints, setPolygonPoints] = useState([
-    { x: 0.2, y: 0.2 },
-    { x: 0.8, y: 0.2 },
-    { x: 0.8, y: 0.8 },
-    { x: 0.2, y: 0.8 },
-  ]);
+  const [polygonPoints, setPolygonPoints] = useState(defaultPolygonPoints);
   const [addingPolygonPoint, setAddingPolygonPoint] = useState(false),
     [polygonDrag, setPolygonDrag] = useState<number | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
@@ -299,16 +313,20 @@ function App() {
     if (!url) return;
     if (placingSticker && privacySticker) {
       const box = event.currentTarget.getBoundingClientRect();
-      setStickerPosition({
-        x: Math.min(
-          0.95,
-          Math.max(0.05, (event.clientX - box.left) / box.width),
-        ),
-        y: Math.min(
-          0.95,
-          Math.max(0.05, (event.clientY - box.top) / box.height),
-        ),
-      });
+      const id = Date.now();
+      setPrivacyCovers((current) => [
+        ...current,
+        {
+          id,
+          kind: privacySticker,
+          size: stickerSize,
+          position: {
+            x: Math.min(0.95, Math.max(0.05, (event.clientX - box.left) / box.width)),
+            y: Math.min(0.95, Math.max(0.05, (event.clientY - box.top) / box.height)),
+          },
+        },
+      ]);
+      setSelectedCoverId(id);
       setPlacingSticker(false);
       return;
     }
@@ -341,19 +359,25 @@ function App() {
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
     if (stickerResizeDrag) {
-      setStickerSize(
-        Math.min(
-          70,
-          Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100),
+      const size = Math.min(70, Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
+      setStickerSize(size);
+      setPrivacyCovers((current) =>
+        current.map((cover) =>
+          cover.id === stickerResizeDrag.id ? { ...cover, size } : cover,
         ),
       );
       return;
     }
     if (stickerDrag) {
-      setStickerPosition({
+      const position = {
         x: Math.min(0.95, Math.max(0.05, stickerDrag.position.x + (event.clientX - stickerDrag.x) / box.width)),
         y: Math.min(0.95, Math.max(0.05, stickerDrag.position.y + (event.clientY - stickerDrag.y) / box.height)),
-      });
+      };
+      setPrivacyCovers((current) =>
+        current.map((cover) =>
+          cover.id === stickerDrag.id ? { ...cover, position } : cover,
+        ),
+      );
       return;
     }
     if (polygonDrag !== null) {
@@ -470,17 +494,21 @@ function App() {
       action: "move",
     });
   }
-  function beginStickerDrag(event: PointerEvent<HTMLSpanElement>) {
+  function beginStickerDrag(event: PointerEvent<HTMLSpanElement>, cover: PrivacyCover) {
     event.stopPropagation();
     setStickerDrag({
       x: event.clientX,
       y: event.clientY,
-      position: stickerPosition,
+      id: cover.id,
+      position: cover.position,
     });
   }
-  function beginStickerResize(event: PointerEvent<HTMLButtonElement>) {
+  function beginStickerResize(
+    event: PointerEvent<HTMLButtonElement>,
+    cover: PrivacyCover,
+  ) {
     event.stopPropagation();
-    setStickerResizeDrag({ x: event.clientX, size: stickerSize });
+    setStickerResizeDrag({ x: event.clientX, id: cover.id, size: cover.size });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
@@ -510,14 +538,11 @@ function App() {
     setOverlayUrl("");
     setExpandMode("none");
     setPrivacySticker("");
+    setPrivacyCovers([]);
+    setSelectedCoverId(null);
     setPlacingSticker(false);
     setCustomFrame({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 });
-    setPolygonPoints([
-      { x: 0.2, y: 0.2 },
-      { x: 0.8, y: 0.2 },
-      { x: 0.8, y: 0.8 },
-      { x: 0.2, y: 0.8 },
-    ]);
+    setPolygonPoints(defaultPolygonPoints);
     setAddingPolygonPoint(false);
   }
   function removeSolidBackground() {
@@ -676,11 +701,11 @@ function App() {
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
+    cover: PrivacyCover,
   ) {
-    if (privacySticker !== "mosaic") return;
-    const size = Math.max(36, (width * stickerSize) / 100),
-      centerX = stickerPosition.x * width,
-      centerY = stickerPosition.y * height,
+    const size = Math.max(36, (width * cover.size) / 100),
+      centerX = cover.position.x * width,
+      centerY = cover.position.y * height,
       left = Math.max(0, Math.round(centerX - size / 2)),
       top = Math.max(0, Math.round(centerY - size / 2)),
       right = Math.min(width, Math.round(centerX + size / 2)),
@@ -790,17 +815,17 @@ function App() {
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
+    cover: PrivacyCover,
   ) {
-    if (!privacySticker || privacySticker === "mosaic") return;
     ctx.save();
-    const size = Math.max(28, (width * stickerSize) / 100);
+    const size = Math.max(28, (width * cover.size) / 100);
     ctx.font = `${size}px "Segoe UI Emoji", Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(
-      privacySticker,
-      stickerPosition.x * width,
-      stickerPosition.y * height,
+      cover.kind,
+      cover.position.x * width,
+      cover.position.y * height,
     );
     ctx.restore();
   }
@@ -865,7 +890,9 @@ function App() {
       drawHeight,
     );
     ctx.restore();
-    drawMosaic(ctx, canvas.width, canvas.height);
+    privacyCovers
+      .filter((cover) => cover.kind === "mosaic")
+      .forEach((cover) => drawMosaic(ctx, canvas.width, canvas.height, cover));
     if (borderWidth > 0) {
       ctx.save();
       ctx.strokeStyle = borderColor;
@@ -883,7 +910,11 @@ function App() {
     }
     drawText(ctx, canvas.width, canvas.height);
     drawAnnotations(ctx, canvas.width, canvas.height);
-    drawPrivacySticker(ctx, canvas.width, canvas.height);
+    privacyCovers
+      .filter((cover) => cover.kind !== "mosaic")
+      .forEach((cover) =>
+        drawPrivacySticker(ctx, canvas.width, canvas.height, cover),
+      );
     if (overlayUrl) {
       const overlay = await loadImage(overlayUrl);
       const targetWidth = canvas.width * 0.22,
@@ -1074,15 +1105,10 @@ function App() {
                   </button>
                   <button
                     onClick={() =>
-                      setPolygonPoints([
-                        { x: 0.2, y: 0.2 },
-                        { x: 0.8, y: 0.2 },
-                        { x: 0.8, y: 0.8 },
-                        { x: 0.2, y: 0.8 },
-                      ])
+                      setPolygonPoints(defaultPolygonPoints)
                     }
                   >
-                    Reset 4 points
+                    Reset 8 points
                   </button>
                 </div>
                 <small>Drag any orange point in the preview to reshape it.</small>
@@ -1157,9 +1183,18 @@ function App() {
                   min="12"
                   max="70"
                   value={stickerSize}
-                  onChange={(event) =>
-                    setStickerSize(Number(event.target.value))
-                  }
+                  onChange={(event) => {
+                    const size = Number(event.target.value);
+                    setStickerSize(size);
+                    if (selectedCoverId !== null)
+                      setPrivacyCovers((current) =>
+                        current.map((cover) =>
+                          cover.id === selectedCoverId
+                            ? { ...cover, size }
+                            : cover,
+                        ),
+                      );
+                  }}
                 />
               </label>
               <button
@@ -1171,13 +1206,33 @@ function App() {
               </button>
               <button
                 onClick={() => {
-                  setPrivacySticker("");
+                  if (selectedCoverId !== null)
+                    setPrivacyCovers((current) =>
+                      current.filter((cover) => cover.id !== selectedCoverId),
+                    );
+                  setSelectedCoverId(null);
                   setPlacingSticker(false);
                 }}
-                disabled={!privacySticker}
+                disabled={selectedCoverId === null}
               >
-                Clear sticker
+                Delete selected
               </button>
+              {privacyCovers.length > 0 && (
+                <div className="cover-list">
+                  {privacyCovers.map((cover, index) => (
+                    <button
+                      key={cover.id}
+                      className={selectedCoverId === cover.id ? "active" : ""}
+                      onClick={() => {
+                        setSelectedCoverId(cover.id);
+                        setStickerSize(cover.size);
+                      }}
+                    >
+                      {cover.kind === "mosaic" ? "▦" : cover.kind} #{index + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
               <small>
                 Choose Mosaic or a sticker, choose its size, then click the
                 exact spot you want to cover in the preview.
@@ -1657,38 +1712,44 @@ function App() {
                       {text}
                     </div>
                   )}
-                  {privacySticker && (
+                  {privacyCovers.map((cover) => (
                     <span
+                      key={cover.id}
                       className={
-                        privacySticker === "mosaic"
+                        cover.kind === "mosaic"
                           ? "privacy-mask-preview mosaic-mask-preview editable"
                           : "privacy-sticker-preview editable"
                       }
-                      onPointerDown={beginStickerDrag}
+                      onPointerDown={(event) => beginStickerDrag(event, cover)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedCoverId(cover.id);
+                        setStickerSize(cover.size);
+                      }}
                       style={{
-                        left: `${stickerPosition.x * 100}%`,
-                        top: `${stickerPosition.y * 100}%`,
-                        fontSize: `${stickerSize}cqw`,
-                        width:
-                          privacySticker === "mosaic"
-                            ? `${stickerSize}%`
-                            : undefined,
-                        height:
-                          privacySticker === "mosaic"
-                            ? `${stickerSize}%`
+                        left: `${cover.position.x * 100}%`,
+                        top: `${cover.position.y * 100}%`,
+                        fontSize: `${cover.size}cqw`,
+                        width: cover.kind === "mosaic" ? `${cover.size}%` : undefined,
+                        height: cover.kind === "mosaic" ? `${cover.size}%` : undefined,
+                        outline:
+                          selectedCoverId === cover.id
+                            ? "2px solid #e86f5c"
                             : undefined,
                       }}
                     >
-                      {privacySticker === "mosaic" ? "▦" : privacySticker}
-                      <button
-                        className="sticker-resize-handle"
-                        aria-label="Resize privacy cover"
-                        onPointerDown={beginStickerResize}
-                      >
-                        ↘
-                      </button>
+                      {cover.kind === "mosaic" ? "▦" : cover.kind}
+                      {selectedCoverId === cover.id && (
+                        <button
+                          className="sticker-resize-handle"
+                          aria-label="Resize privacy cover"
+                          onPointerDown={(event) => beginStickerResize(event, cover)}
+                        >
+                          ↘
+                        </button>
+                      )}
                     </span>
-                  )}
+                  ))}
                   {overlayUrl && (
                     <img
                       src={overlayUrl}
