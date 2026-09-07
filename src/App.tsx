@@ -210,7 +210,8 @@ function App() {
   } | null>(null);
   const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 }),
     [imageOffset, setImageOffset] = useState({ x: 0, y: 0 }),
-    [presetFrameOffset, setPresetFrameOffset] = useState({ x: 0, y: 0 });
+    [presetFrameOffset, setPresetFrameOffset] = useState({ x: 0, y: 0 }),
+    [presetFrameScale, setPresetFrameScale] = useState(1);
   const [customFrame, setCustomFrame] = useState({
     x: 0.1,
     y: 0.1,
@@ -264,12 +265,14 @@ function App() {
       ? customFrame
       : {
           ...cropFrame,
+          width: cropFrame.width * presetFrameScale,
+          height: cropFrame.height * presetFrameScale,
           x: Math.min(
-            1 - cropFrame.width,
+            1 - cropFrame.width * presetFrameScale,
             Math.max(0, cropFrame.x + presetFrameOffset.x),
           ),
           y: Math.min(
-            1 - cropFrame.height,
+            1 - cropFrame.height * presetFrameScale,
             Math.max(0, cropFrame.y + presetFrameOffset.y),
           ),
         };
@@ -298,6 +301,7 @@ function App() {
     setOriginalUrl(nextUrl);
     setImageOffset({ x: 0, y: 0 });
     setPresetFrameOffset({ x: 0, y: 0 });
+    setPresetFrameScale(1);
   }
   function loadOverlay(file?: File) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -306,6 +310,7 @@ function App() {
   function choosePreset(next: Preset) {
     setPreset(next);
     setPresetFrameOffset({ x: 0, y: 0 });
+    setPresetFrameScale(1);
     if (next.id !== "custom")
       setCustom({ width: next.width, height: next.height });
   }
@@ -433,6 +438,26 @@ function App() {
         next.width = right - next.x;
         next.height = bottom - next.y;
       }
+      if (preset.id !== "custom") {
+        const ratio = frameDrag.frame.width / frameDrag.frame.height,
+          deltaX = frameDrag.corner === "nw" || frameDrag.corner === "sw" ? -dx : dx,
+          nextWidth = Math.min(
+            Math.min(0.96, 0.96 * ratio),
+            Math.max(0.12, frameDrag.frame.width + deltaX),
+          ),
+          nextHeight = nextWidth / ratio;
+        next.width = nextWidth;
+        next.height = nextHeight;
+        if (frameDrag.corner === "nw" || frameDrag.corner === "sw")
+          next.x = frameDrag.frame.x + frameDrag.frame.width - nextWidth;
+        if (frameDrag.corner === "nw" || frameDrag.corner === "ne")
+          next.y = frameDrag.frame.y + frameDrag.frame.height - nextHeight;
+        next.x = Math.min(1 - next.width, Math.max(0, next.x));
+        next.y = Math.min(1 - next.height, Math.max(0, next.y));
+        setPresetFrameScale(nextWidth / cropFrame.width);
+        setPresetFrameOffset({ x: next.x - cropFrame.x, y: next.y - cropFrame.y });
+        return;
+      }
       setCustomFrame(next);
       setCustom((current) => ({
         ...current,
@@ -480,7 +505,7 @@ function App() {
     setFrameDrag({
       x: event.clientX,
       y: event.clientY,
-      frame: customFrame,
+      frame: visibleCropFrame,
       action: "resize",
       corner,
     });
@@ -519,6 +544,7 @@ function App() {
     setFitPosition({ x: 0.5, y: 0.5 });
     setImageOffset({ x: 0, y: 0 });
     setPresetFrameOffset({ x: 0, y: 0 });
+    setPresetFrameScale(1);
     setShape("original");
     setAdjust({
       brightness: 100,
@@ -1105,10 +1131,13 @@ function App() {
                   </button>
                   <button
                     onClick={() =>
-                      setPolygonPoints(defaultPolygonPoints)
+                      {
+                        setPolygonPoints(defaultPolygonPoints);
+                        setAddingPolygonPoint(false);
+                      }
                     }
                   >
-                    Reset 8 points
+                    Restore original shape
                   </button>
                 </div>
                 <small>Drag any orange point in the preview to reshape it.</small>
@@ -1169,7 +1198,10 @@ function App() {
                   <button
                     key={item}
                     className={privacySticker === item ? "active" : ""}
-                    onClick={() => setPrivacySticker(item)}
+                    onClick={() => {
+                      setPrivacySticker(item);
+                      if (url) setPlacingSticker(true);
+                    }}
                     title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}
                   >
                     {item === "mosaic" ? "▦" : item}
@@ -1636,9 +1668,7 @@ function App() {
                   />
                   {mode === "crop" && shape !== "polygon" && (
                     <div
-                      className={
-                        preset.id === "custom" ? "crop editable" : "crop"
-                      }
+                      className="crop editable"
                       style={{
                         left: `${visibleCropFrame.x * 100}%`,
                         top: `${visibleCropFrame.y * 100}%`,
@@ -1652,17 +1682,16 @@ function App() {
                       >
                         MOVE FRAME
                       </span>
-                      {preset.id === "custom" &&
-                        (["nw", "ne", "se", "sw"] as const).map((corner) => (
-                          <button
-                            key={corner}
-                            className={`crop-handle ${corner}`}
-                            aria-label={`Resize crop ${corner}`}
-                            onPointerDown={(event) =>
-                              beginFrameResize(event, corner)
-                            }
-                          />
-                        ))}
+                      {(["nw", "ne", "se", "sw"] as const).map((corner) => (
+                        <button
+                          key={corner}
+                          className={`crop-handle ${corner}`}
+                          aria-label={`Resize crop ${corner}`}
+                          onPointerDown={(event) =>
+                            beginFrameResize(event, corner)
+                          }
+                        />
+                      ))}
                     </div>
                   )}
                   {shape === "polygon" && (

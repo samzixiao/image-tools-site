@@ -82,7 +82,7 @@
   grid-template-columns: 370px 1fr;
   border: 1px solid #e1e3dc;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 18px 50px #273d2720;
 }
 .controls {
@@ -417,6 +417,7 @@
   stroke: #f27661;
   stroke-width: 0.6;
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 .polygon-preview circle {
   fill: #f27661;
