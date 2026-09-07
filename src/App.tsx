@@ -177,11 +177,14 @@ function App() {
     [stickerSize, setStickerSize] = useState(30),
     [stickerPosition, setStickerPosition] = useState({ x: 0.5, y: 0.5 }),
     [placingSticker, setPlacingSticker] = useState(false);
+  const [fitPosition, setFitPosition] = useState({ x: 0.5, y: 0.5 });
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
     [drag, setDrag] = useState<{
       x: number;
       y: number;
       crop: typeof crop;
+      fitPosition: typeof fitPosition;
+      mode: "crop" | "fit";
     } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
     overlayInput = useRef<HTMLInputElement>(null);
@@ -240,15 +243,27 @@ function App() {
       setPlacingSticker(false);
       return;
     }
-    if (mode === "fit") return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setDrag({ x: event.clientX, y: event.clientY, crop });
+    setDrag({
+      x: event.clientX,
+      y: event.clientY,
+      crop,
+      fitPosition,
+      mode,
+    });
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!drag) return;
     const box = event.currentTarget.getBoundingClientRect(),
       dx = (event.clientX - drag.x) / box.width,
       dy = (event.clientY - drag.y) / box.height;
+    if (drag.mode === "fit") {
+      setFitPosition({
+        x: Math.min(1, Math.max(0, drag.fitPosition.x + dx)),
+        y: Math.min(1, Math.max(0, drag.fitPosition.y + dy)),
+      });
+      return;
+    }
     setCrop((current) => ({
       ...current,
       x: Math.min(Math.max(0, drag.crop.x + dx), 1 - current.width),
@@ -273,6 +288,7 @@ function App() {
     setRotation(0);
     setFlipX(false);
     setFlipY(false);
+    setFitPosition({ x: 0.5, y: 0.5 });
     setShape("original");
     setAdjust({
       brightness: 100,
@@ -605,7 +621,15 @@ function App() {
       );
     ctx.clip();
     drawExpansion(ctx, image, canvas.width, canvas.height);
-    ctx.translate(canvas.width / 2, canvas.height / 2);
+    const destinationX =
+        mode === "fit"
+          ? (canvas.width - drawWidth) * fitPosition.x
+          : (canvas.width - drawWidth) / 2,
+      destinationY =
+        mode === "fit"
+          ? (canvas.height - drawHeight) * fitPosition.y
+          : (canvas.height - drawHeight) / 2;
+    ctx.translate(destinationX + drawWidth / 2, destinationY + drawHeight / 2);
     ctx.rotate((rotation * Math.PI) / 180);
     ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
     ctx.filter = filterValue;
@@ -666,6 +690,7 @@ function App() {
 
   const previewStyle = {
     objectFit: "contain" as const,
+    objectPosition: `${fitPosition.x * 100}% ${fitPosition.y * 100}%`,
     transform: `scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
     filter: filterValue,
   };
@@ -1265,7 +1290,7 @@ function App() {
               </b>
             </div>
             <div
-              className="stage"
+              className={drag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: `${output.width}/${output.height}`,
                 maxWidth: `${Math.min(720, 470 * aspect)}px`,
@@ -1306,10 +1331,13 @@ function App() {
                         width: `${crop.width * 100}%`,
                         height: `${crop.height * 100}%`,
                       }}
-                    >
-                      <span>DRAG TO REPOSITION</span>
-                    </div>
+                    />
                   )}
+                  <span className="drag-hint">
+                    {mode === "crop"
+                      ? "DRAG TO REPOSITION CROP"
+                      : "DRAG PHOTO TO POSITION"}
+                  </span>
                   {measure && (
                     <div className="measure-preview">
                       <span>

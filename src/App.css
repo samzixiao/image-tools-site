@@ -298,6 +298,10 @@
     0 10px,
     10px -10px,
     -10px 0;
+  cursor: grab;
+}
+.stage.is-dragging {
+  cursor: grabbing;
 }
 .stage > img {
   width: 100%;
@@ -342,6 +346,20 @@
     monospace;
   letter-spacing: 0.06em;
   transform: translateY(1px);
+}
+.drag-hint {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 11px;
+  transform: translateX(-50%);
+  padding: 4px 7px;
+  border-radius: 3px;
+  background: #1b2820ba;
+  color: #fff;
+  font: 8px "DM Mono", monospace;
+  letter-spacing: 0.05em;
+  pointer-events: none;
 }
 .crop.hidden {
   display: none;
