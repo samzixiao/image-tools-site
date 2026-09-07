@@ -47,6 +47,8 @@ type TextLayer = {
   scale: number;
   fontFamily: "Inter" | "Roboto" | "Poppins" | "Montserrat" | "Open Sans";
   bold: boolean;
+  boxWidth: number;
+  boxHeight: number;
 };
 type Preset = {
   id: string;
@@ -210,6 +212,14 @@ function App() {
     y: number;
     position: TextLayer["position"];
   } | null>(null);
+  const [textResizeDrag, setTextResizeDrag] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [editingTextId, setEditingTextId] = useState<number | null>(null);
   const [overlayUrl, setOverlayUrl] = useState(""),
     [overlayOpacity, setOverlayOpacity] = useState(80),
     [overlayPosition, setOverlayPosition] = useState<
@@ -229,6 +239,13 @@ function App() {
     x: number;
     y: number;
     position: DimensionMarker["position"];
+  } | null>(null);
+  const [markerResizeDrag, setMarkerResizeDrag] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    length: number;
+    rotation: number;
   } | null>(null);
   const [markerLabelDrag, setMarkerLabelDrag] = useState<{
     id: number;
@@ -412,6 +429,15 @@ function App() {
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
+    if (markerResizeDrag) {
+      const radians = (markerResizeDrag.rotation * Math.PI) / 180;
+      const projection =
+        ((event.clientX - markerResizeDrag.x) / box.width) * 100 * Math.cos(radians) +
+        ((event.clientY - markerResizeDrag.y) / box.height) * 100 * Math.sin(radians);
+      const length = Math.min(88, Math.max(12, markerResizeDrag.length + projection * 2));
+      setDimensionMarkers((current) => current.map((marker) => marker.id === markerResizeDrag.id ? { ...marker, length } : marker));
+      return;
+    }
     if (markerDrag) {
       const position = {
         x: Math.min(0.9, Math.max(0.1, markerDrag.position.x + (event.clientX - markerDrag.x) / box.width)),
@@ -434,6 +460,12 @@ function App() {
         y: Math.min(0.94, Math.max(0.06, textDrag.position.y + (event.clientY - textDrag.y) / box.height)),
       };
       setTextLayers((current) => current.map((layer) => layer.id === textDrag.id ? { ...layer, position } : layer));
+      return;
+    }
+    if (textResizeDrag) {
+      const boxWidth = Math.min(92, Math.max(12, textResizeDrag.width + ((event.clientX - textResizeDrag.x) / box.width) * 100));
+      const boxHeight = Math.min(80, Math.max(6, textResizeDrag.height + ((event.clientY - textResizeDrag.y) / box.height) * 100));
+      setTextLayers((current) => current.map((layer) => layer.id === textResizeDrag.id ? { ...layer, boxWidth, boxHeight } : layer));
       return;
     }
     if (overlayDrag) {
@@ -632,6 +664,12 @@ function App() {
     setSelectedMarkerId(marker.id);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
+  function beginMarkerResize(event: PointerEvent<HTMLButtonElement>, marker: DimensionMarker) {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedMarkerId(marker.id);
+    setMarkerResizeDrag({ id: marker.id, x: event.clientX, y: event.clientY, length: marker.length, rotation: marker.rotation });
+  }
   function beginMarkerLabelDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -639,10 +677,17 @@ function App() {
     setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
   function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
+    if (editingTextId === layer.id) return;
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedTextId(layer.id);
     setTextDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
+  }
+  function beginTextResize(event: PointerEvent<HTMLButtonElement>, layer: TextLayer) {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedTextId(layer.id);
+    setTextResizeDrag({ id: layer.id, x: event.clientX, y: event.clientY, width: layer.boxWidth, height: layer.boxHeight });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
@@ -851,6 +896,9 @@ function App() {
       ? `${value.toFixed(2)} cm / ${(value / 2.54).toFixed(2)} in`
       : `${value.toFixed(2)} in / ${(value * 2.54).toFixed(2)} cm`;
   }
+  function arrowHead(marker: DimensionMarker) {
+    return Math.min(15, Math.max(3, marker.thickness * 4));
+  }
   function drawDimensionMarker(
     ctx: CanvasRenderingContext2D,
     width: number,
@@ -858,14 +906,15 @@ function App() {
     marker: DimensionMarker,
   ) {
     const length = (width * marker.length) / 100,
-      arrow = Math.max(8, Math.min(width, height) / 75),
+      lineWidth = Math.max((Math.min(width, height) * marker.thickness) / 360, 1),
+      arrow = Math.max(lineWidth * 4, (Math.min(width, height) * arrowHead(marker)) / 100),
       fontSize = Math.max(16, width / 44);
     ctx.save();
     ctx.translate(marker.position.x * width, marker.position.y * height);
     ctx.rotate((marker.rotation * Math.PI) / 180);
     ctx.strokeStyle = marker.color;
     ctx.fillStyle = marker.color;
-    ctx.lineWidth = Math.max(marker.thickness, width / 550);
+    ctx.lineWidth = lineWidth;
     ctx.beginPath();
     ctx.moveTo(-length / 2, 0);
     ctx.lineTo(length / 2, 0);
@@ -884,7 +933,7 @@ function App() {
     }
     if (marker.endStyle === "ticks") {
       ctx.strokeStyle = marker.color;
-      ctx.lineWidth = Math.max(marker.thickness, width / 550);
+      ctx.lineWidth = lineWidth;
       ctx.beginPath();
       ctx.moveTo(-length / 2, -arrow * 0.8);
       ctx.lineTo(-length / 2, arrow * 0.8);
@@ -923,7 +972,24 @@ function App() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = layer.color;
-    ctx.fillText(layer.content, 0, 0, width * 0.9);
+    const maxWidth = (width * layer.boxWidth) / 100,
+      lineHeight = size * 1.25,
+      maxLines = Math.max(1, Math.floor(((height * layer.boxHeight) / 100) / lineHeight)),
+      lines: string[] = [];
+    let line = "";
+    for (const character of Array.from(layer.content)) {
+      const candidate = line + character;
+      if (line && ctx.measureText(candidate).width > maxWidth) {
+        lines.push(line);
+        line = character;
+      } else line = candidate;
+    }
+    if (line) lines.push(line);
+    const visibleLines = lines.slice(0, maxLines),
+      startY = -((visibleLines.length - 1) * lineHeight) / 2;
+    visibleLines.forEach((item, index) =>
+      ctx.fillText(item, 0, startY + index * lineHeight, maxWidth),
+    );
     ctx.restore();
   }
   function drawExpansion(
@@ -1535,7 +1601,7 @@ function App() {
                 disabled={!url}
                 onClick={() => {
                   const id = Date.now();
-                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false }]);
+                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
                   setSelectedTextId(id);
                 }}
               >
@@ -1562,6 +1628,12 @@ function App() {
                     </label>
                     <label>
                       Scale <input type="range" min="0.3" max="3" step="0.1" value={selectedText.scale} onChange={(event) => updateSelectedText({ scale: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      Box width <input type="range" min="12" max="92" value={selectedText.boxWidth} onChange={(event) => updateSelectedText({ boxWidth: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      Box height <input type="range" min="6" max="80" value={selectedText.boxHeight} onChange={(event) => updateSelectedText({ boxHeight: Number(event.target.value) })} />
                     </label>
                     <label>
                       Font <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as TextLayer["fontFamily"] })}>
@@ -1737,10 +1809,10 @@ function App() {
                       value: "60",
                       unit: "cm",
                       position: { x: 0.5, y: 0.76 },
-                      length: 58,
+                      length: 38,
                       rotation: 0,
                       color: "#e66d5b",
-                      thickness: 2,
+                      thickness: 1,
                       endStyle: "arrows",
                       labelPosition: { x: 0.5, y: 0.69 },
                       labelRotation: 0,
@@ -1786,8 +1858,8 @@ function App() {
                     Arrow length <b>{Math.round(selectedMarker.length)}%</b>
                     <input
                       type="range"
-                      min="20"
-                      max="90"
+                      min="12"
+                      max="88"
                       value={selectedMarker.length}
                       onChange={(event) =>
                         updateSelectedMarker({
@@ -1905,7 +1977,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || textDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -1925,8 +1997,10 @@ function App() {
                 setStickerResizeDrag(null);
                 setOverlayDrag(null);
                 setMarkerDrag(null);
+                setMarkerResizeDrag(null);
                 setMarkerLabelDrag(null);
                 setTextDrag(null);
+                setTextResizeDrag(null);
               }}
             >
               {url ? (
@@ -2015,12 +2089,13 @@ function App() {
                       >
                         <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
                           <line x1="0" y1="10" x2="100" y2="10" stroke={marker.color} strokeWidth={marker.thickness} vectorEffect="non-scaling-stroke" />
-                          {marker.endStyle === "arrows" && (
-                            <>
-                              <polygon points="0,10 7,2 7,18" fill={marker.color} />
-                              <polygon points="100,10 93,2 93,18" fill={marker.color} />
-                            </>
-                          )}
+                          {marker.endStyle === "arrows" && (() => {
+                            const head = arrowHead(marker), y = Math.min(9, head * 0.7);
+                            return <>
+                              <polygon points={`0,10 ${head},${10 - y} ${head},${10 + y}`} fill={marker.color} />
+                              <polygon points={`100,10 ${100 - head},${10 - y} ${100 - head},${10 + y}`} fill={marker.color} />
+                            </>;
+                          })()}
                           {marker.endStyle === "ticks" && (
                             <>
                               <line x1="0" y1="2" x2="0" y2="18" stroke={marker.color} strokeWidth={marker.thickness} vectorEffect="non-scaling-stroke" />
@@ -2028,9 +2103,12 @@ function App() {
                             </>
                           )}
                         </svg>
+                        {marker.id === selectedMarkerId && (
+                          <button className="measure-resize-handle" aria-label="Resize arrow" onPointerDown={(event) => beginMarkerResize(event, marker)}>↔</button>
+                        )}
                       </div>
                       <div
-                        className="measure-label editable"
+                        className={marker.id === selectedMarkerId ? "measure-label selected editable" : "measure-label editable"}
                         onPointerDown={(event) => beginMarkerLabelDrag(event, marker)}
                         onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
                         style={{
@@ -2050,11 +2128,32 @@ function App() {
                       className={layer.id === selectedTextId ? "caption-overlay selected editable" : "caption-overlay editable"}
                       onPointerDown={(event) => beginTextDrag(event, layer)}
                       onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        const element = event.currentTarget;
+                        setSelectedTextId(layer.id);
+                        setEditingTextId(layer.id);
+                        requestAnimationFrame(() => element.focus());
+                      }}
+                      onInput={(event) =>
+                        setTextLayers((current) =>
+                          current.map((item) =>
+                            item.id === layer.id
+                              ? { ...item, content: event.currentTarget.textContent || "" }
+                              : item,
+                          ),
+                        )
+                      }
+                      onBlur={() => setEditingTextId(null)}
+                      contentEditable={editingTextId === layer.id}
+                      suppressContentEditableWarning
                       style={{
                         color: layer.color,
                         fontSize: `${Math.max(14, layer.size / 2)}px`,
                         left: `${layer.position.x * 100}%`,
                         top: `${layer.position.y * 100}%`,
+                        width: `${layer.boxWidth}%`,
+                        height: `${layer.boxHeight}%`,
                         transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scale})`,
                         fontFamily: `"${layer.fontFamily}", Arial, sans-serif`,
                         fontWeight: layer.bold ? 700 : 400,
@@ -2062,6 +2161,9 @@ function App() {
                       }}
                     >
                       {layer.content}
+                      {layer.id === selectedTextId && editingTextId !== layer.id && (
+                        <button className="caption-resize-handle" aria-label="Resize text box" contentEditable={false} onPointerDown={(event) => beginTextResize(event, layer)}>↘</button>
+                      )}
                     </div>
                   ))}
                   {privacyCovers.map((cover) => (
