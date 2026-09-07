@@ -1183,6 +1183,11 @@ function App() {
     if (selectedTextId === null) return;
     setTextLayers((current) => current.map((layer) => layer.id === selectedTextId ? { ...layer, ...patch } : layer));
   }
+  function removeTextLayer(id: number) {
+    setTextLayers((current) => current.filter((layer) => layer.id !== id));
+    setSelectedTextId((current) => current === id ? null : current);
+    setEditingTextId((current) => current === id ? null : current);
+  }
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -2130,23 +2135,9 @@ function App() {
                       onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
                       onDoubleClick={(event) => {
                         event.stopPropagation();
-                        const element = event.currentTarget;
                         setSelectedTextId(layer.id);
                         setEditingTextId(layer.id);
-                        requestAnimationFrame(() => element.focus());
                       }}
-                      onInput={(event) =>
-                        setTextLayers((current) =>
-                          current.map((item) =>
-                            item.id === layer.id
-                              ? { ...item, content: event.currentTarget.textContent || "" }
-                              : item,
-                          ),
-                        )
-                      }
-                      onBlur={() => setEditingTextId(null)}
-                      contentEditable={editingTextId === layer.id}
-                      suppressContentEditableWarning
                       style={{
                         color: layer.color,
                         fontSize: `${Math.max(14, layer.size / 2)}px`,
@@ -2160,9 +2151,42 @@ function App() {
                         textShadow: "none",
                       }}
                     >
-                      {layer.content}
+                      {editingTextId === layer.id ? (
+                        <textarea
+                          className="caption-inline-editor"
+                          autoFocus
+                          value={layer.content}
+                          aria-label="Edit text layer"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) =>
+                            setTextLayers((current) =>
+                              current.map((item) =>
+                                item.id === layer.id ? { ...item, content: event.target.value } : item,
+                              ),
+                            )
+                          }
+                          onBlur={() => setEditingTextId(null)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.currentTarget.blur();
+                            }
+                          }}
+                        />
+                      ) : layer.content}
                       {layer.id === selectedTextId && editingTextId !== layer.id && (
-                        <button className="caption-resize-handle" aria-label="Resize text box" contentEditable={false} onPointerDown={(event) => beginTextResize(event, layer)}>↘</button>
+                        <>
+                          <button className="caption-resize-handle" aria-label="Resize text box" onPointerDown={(event) => beginTextResize(event, layer)}>↘</button>
+                          <button
+                            className="caption-delete-handle"
+                            aria-label="Delete text layer"
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              removeTextLayer(layer.id);
+                            }}
+                          >×</button>
+                        </>
                       )}
                     </div>
                   ))}
