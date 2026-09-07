@@ -151,7 +151,8 @@ function App() {
     [fileName, setFileName] = useState(""),
     [natural, setNatural] = useState({ width: 0, height: 0 });
   const [preset, setPreset] = useState(presets[0]),
-    [custom, setCustom] = useState({ width: 1080, height: 1080 });
+    [custom, setCustom] = useState({ width: 1080, height: 1080 }),
+    [sizeSelected, setSizeSelected] = useState(false);
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
     [mode, setMode] = useState<"crop" | "fit">("crop");
@@ -323,6 +324,7 @@ function App() {
   }
   function choosePreset(next: Preset) {
     setPreset(next);
+    setSizeSelected(true);
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
     if (next.id !== "custom")
@@ -583,6 +585,7 @@ function App() {
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
     setShape("original");
+    setSizeSelected(false);
     setAdjust({
       brightness: 100,
       contrast: 100,
@@ -751,7 +754,16 @@ function App() {
     }
     const points = shape === "hexagon" ? 6 : shape === "badge" ? 16 : 10;
     for (let i = 0; i < points; i++) {
-      const radius = shape === "hexagon" ? 0.48 : i % 2 ? 0.32 : 0.48,
+      const radius =
+          shape === "hexagon"
+            ? 0.48
+            : shape === "badge"
+              ? i % 2
+                ? 0.43
+                : 0.48
+              : i % 2
+                ? 0.32
+                : 0.48,
         angle = -Math.PI / 2 + (Math.PI * 2 * i) / points,
         x = width / 2 + Math.cos(angle) * width * radius,
         y = height / 2 + Math.sin(angle) * height * radius;
@@ -1082,9 +1094,12 @@ function App() {
             <div className="presets">
               {presets.map((item) => (
                 <button
-                  className={preset.id === item.id ? "preset active" : "preset"}
+                  className={sizeSelected && preset.id === item.id ? "preset active" : "preset"}
                   key={item.id}
-                  onClick={() => choosePreset(item)}
+                  onClick={() => {
+                    if (sizeSelected && preset.id === item.id) setSizeSelected(false);
+                    else choosePreset(item);
+                  }}
                 >
                   <b>{item.group}</b>
                   <span>{item.name}</span>
@@ -1094,16 +1109,18 @@ function App() {
                 </button>
               ))}
               <button
-                className={preset.id === "custom" ? "preset active" : "preset"}
+                className={sizeSelected && preset.id === "custom" ? "preset active" : "preset"}
                 onClick={() =>
-                  choosePreset({
-                    id: "custom",
-                    group: "Custom",
-                    name: "自定义尺寸",
-                    en: "Custom size",
-                    width: custom.width,
-                    height: custom.height,
-                  })
+                  sizeSelected && preset.id === "custom"
+                    ? setSizeSelected(false)
+                    : choosePreset({
+                        id: "custom",
+                        group: "Custom",
+                        name: "自定义尺寸",
+                        en: "Custom size",
+                        width: custom.width,
+                        height: custom.height,
+                      })
                 }
               >
                 <b>Custom</b>
@@ -1150,7 +1167,7 @@ function App() {
             <div className="shape-grid">
               {shapes.map((item) => (
                 <button
-                  className={shape === item ? "shape active" : "shape"}
+                  className={shape === item && item !== "original" ? "shape active" : "shape"}
                   key={item}
                   onClick={() => setShape(shape === item ? "original" : item)}
                 >
@@ -1682,11 +1699,11 @@ function App() {
               <div>
                 <small>LIVE PREVIEW</small>
                 <strong>
-                  {preset.group} · {preset.en}
+                  {sizeSelected ? `${preset.group} · ${preset.en}` : "Original image · no size selected"}
                 </strong>
               </div>
               <b>
-                {output.width} × {output.height} px
+                {sizeSelected ? `${output.width} × ${output.height} px` : "Original"}
               </b>
             </div>
             <div
@@ -1730,7 +1747,7 @@ function App() {
                     className={`preview-image ${shape}`}
                     style={previewStyle}
                   />
-                  {mode === "crop" && shape !== "polygon" && (
+                  {sizeSelected && mode === "crop" && shape !== "polygon" && (
                     <div
                       className="crop editable"
                       style={{
