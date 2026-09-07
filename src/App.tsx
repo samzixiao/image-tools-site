@@ -190,6 +190,18 @@ function App() {
       "top-left" | "top-right" | "bottom-left" | "bottom-right"
     >("bottom-right"),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
+  const [overlayOffset, setOverlayOffset] = useState({ x: 0.84, y: 0.84 }),
+    [measurePosition, setMeasurePosition] = useState({ x: 0.5, y: 0.78 });
+  const [overlayDrag, setOverlayDrag] = useState<{
+    x: number;
+    y: number;
+    position: typeof overlayOffset;
+  } | null>(null);
+  const [measureDrag, setMeasureDrag] = useState<{
+    x: number;
+    y: number;
+    position: typeof measurePosition;
+  } | null>(null);
   const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
     [expandStrength, setExpandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
@@ -306,6 +318,7 @@ function App() {
   function loadOverlay(file?: File) {
     if (!file || !file.type.startsWith("image/")) return;
     setOverlayUrl(URL.createObjectURL(file));
+    setOverlayOffset({ x: 0.84, y: 0.84 });
   }
   function choosePreset(next: Preset) {
     setPreset(next);
@@ -363,6 +376,20 @@ function App() {
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
+    if (overlayDrag) {
+      setOverlayOffset({
+        x: Math.min(0.9, Math.max(0.1, overlayDrag.position.x + (event.clientX - overlayDrag.x) / box.width)),
+        y: Math.min(0.9, Math.max(0.1, overlayDrag.position.y + (event.clientY - overlayDrag.y) / box.height)),
+      });
+      return;
+    }
+    if (measureDrag) {
+      setMeasurePosition({
+        x: Math.min(0.9, Math.max(0.1, measureDrag.position.x + (event.clientX - measureDrag.x) / box.width)),
+        y: Math.min(0.9, Math.max(0.15, measureDrag.position.y + (event.clientY - measureDrag.y) / box.height)),
+      });
+      return;
+    }
     if (stickerResizeDrag) {
       const size = Math.min(70, Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
       setStickerSize(size);
@@ -534,6 +561,14 @@ function App() {
   ) {
     event.stopPropagation();
     setStickerResizeDrag({ x: event.clientX, id: cover.id, size: cover.size });
+  }
+  function beginOverlayDrag(event: PointerEvent<HTMLImageElement>) {
+    event.stopPropagation();
+    setOverlayDrag({ x: event.clientX, y: event.clientY, position: overlayOffset });
+  }
+  function beginMeasureDrag(event: PointerEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    setMeasureDrag({ x: event.clientX, y: event.clientY, position: measurePosition });
   }
   const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
   function resetEdits() {
@@ -764,6 +799,10 @@ function App() {
           ? `${value} cm / ${(value / 2.54).toFixed(1)} in`
           : `${value} in / ${(value * 2.54).toFixed(1)} cm`;
     ctx.save();
+    ctx.translate(
+      (measurePosition.x - 0.5) * width * 0.35,
+      (measurePosition.y - 0.78) * height * 0.35,
+    );
     ctx.strokeStyle = "#e66d5b";
     ctx.fillStyle = "#e66d5b";
     ctx.lineWidth = Math.max(3, width / 500);
@@ -946,13 +985,8 @@ function App() {
       const targetWidth = canvas.width * 0.22,
         targetHeight =
           (targetWidth * overlay.naturalHeight) / overlay.naturalWidth,
-        pad = canvas.width * 0.035,
-        x = overlayPosition.endsWith("right")
-          ? canvas.width - targetWidth - pad
-          : pad,
-        y = overlayPosition.startsWith("bottom")
-          ? canvas.height - targetHeight - pad
-          : pad;
+        x = overlayOffset.x * canvas.width - targetWidth / 2,
+        y = overlayOffset.y * canvas.height - targetHeight / 2;
       ctx.save();
       ctx.globalAlpha = overlayOpacity / 100;
       ctx.drawImage(overlay, x, y, targetWidth, targetHeight);
@@ -969,10 +1003,6 @@ function App() {
     objectFit: "contain" as const,
     objectPosition: "center" as const,
     transform: `translate(${imageOffset.x * 100}cqw, ${imageOffset.y * 100}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
-    clipPath:
-      shape === "polygon"
-        ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})`
-        : undefined,
     filter: filterValue,
   };
   return (
@@ -1502,11 +1532,14 @@ function App() {
                   </label>
                   <select
                     value={overlayPosition}
-                    onChange={(event) =>
-                      setOverlayPosition(
-                        event.target.value as typeof overlayPosition,
-                      )
-                    }
+                    onChange={(event) => {
+                      const position = event.target.value as typeof overlayPosition;
+                      setOverlayPosition(position);
+                      setOverlayOffset({
+                        x: position.endsWith("right") ? 0.84 : 0.16,
+                        y: position.startsWith("bottom") ? 0.84 : 0.16,
+                      });
+                    }}
                   >
                     <option value="top-left">Top left</option>
                     <option value="top-right">Top right</option>
@@ -1646,6 +1679,8 @@ function App() {
                 setPolygonDrag(null);
                 setStickerDrag(null);
                 setStickerResizeDrag(null);
+                setOverlayDrag(null);
+                setMeasureDrag(null);
               }}
             >
               {url ? (
@@ -1721,7 +1756,14 @@ function App() {
                       : "DRAG PHOTO TO POSITION"}
                   </span>
                   {measure && (
-                    <div className="measure-preview">
+                    <div
+                      className="measure-preview editable"
+                      onPointerDown={beginMeasureDrag}
+                      style={{
+                        left: `${measurePosition.x * 100}%`,
+                        top: `${measurePosition.y * 100}%`,
+                      }}
+                    >
                       <span>
                         {dims.width} cm /{" "}
                         {(Number(dims.width) / 2.54).toFixed(1)} in
@@ -1783,8 +1825,13 @@ function App() {
                     <img
                       src={overlayUrl}
                       alt="Overlay layer"
-                      className={`overlay-preview ${overlayPosition}`}
-                      style={{ opacity: overlayOpacity / 100 }}
+                      className="overlay-preview editable"
+                      onPointerDown={beginOverlayDrag}
+                      style={{
+                        opacity: overlayOpacity / 100,
+                        left: `${overlayOffset.x * 100}%`,
+                        top: `${overlayOffset.y * 100}%`,
+                      }}
                     />
                   )}
                   {borderWidth > 0 && (
@@ -1796,36 +1843,6 @@ function App() {
                       }}
                     />
                   )}
-                  <div
-                    className="canvas-zoom"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    aria-label="Preview zoom"
-                  >
-                    <button
-                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
-                      aria-label="Zoom out"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="range"
-                      min=".5"
-                      max="2"
-                      step=".05"
-                      value={zoom}
-                      onChange={(event) => setZoom(Number(event.target.value))}
-                      aria-label="Preview zoom level"
-                    />
-                    <button
-                      onClick={() => setZoom(Math.min(2, zoom + 0.1))}
-                      aria-label="Zoom in"
-                    >
-                      ＋
-                    </button>
-                    <button className="zoom-reset" onClick={() => setZoom(1)}>
-                      {Math.round(zoom * 100)}%
-                    </button>
-                  </div>
                 </>
               ) : (
                 <div className="empty">
@@ -1834,6 +1851,40 @@ function App() {
                   <small>Upload an image to get started</small>
                 </div>
               )}
+            </div>
+            <div className="preview-canvas-tools" aria-label="Canvas controls">
+              <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} disabled={!url}>−</button>
+              <input
+                type="range"
+                min=".5"
+                max="2"
+                step=".05"
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                disabled={!url}
+                aria-label="Preview zoom level"
+              />
+              <button onClick={() => setZoom(Math.min(2, zoom + 0.1))} disabled={!url}>＋</button>
+              <button onClick={() => setZoom(1)} disabled={!url}>{Math.round(zoom * 100)}%</button>
+              <span></span>
+              <button
+                onClick={() => {
+                  setImageOffset({ x: 0, y: 0 });
+                  setZoom(1);
+                  setRotation(0);
+                  setFlipX(false);
+                  setFlipY(false);
+                }}
+                disabled={!url}
+              >
+                Reset view
+              </button>
+              <button
+                onClick={() => setImageOffset({ x: 0, y: 0 })}
+                disabled={!url}
+              >
+                Center image
+              </button>
             </div>
             <div className="preview-transform" aria-label="Preview controls">
               <div>

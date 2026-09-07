@@ -863,8 +863,12 @@ footer {
   max-height: 22%;
   object-fit: contain !important;
   pointer-events: none;
-  transform: none !important;
+  transform: translate(-50%, -50%) !important;
   filter: none !important;
+}
+.overlay-preview.editable {
+  pointer-events: auto;
+  cursor: move;
 }
 .overlay-preview.top-left {
   top: 3.5%;
@@ -1087,6 +1091,27 @@ footer {
   width: 78px;
   accent-color: #ff8a75;
 }
+.preview-canvas-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 0;
+  border-bottom: 1px solid #eceee9;
+}
+.preview-canvas-tools button {
+  border: 1px solid #dfe2dc;
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: #fff;
+  color: #667067;
+  font-size: 10px;
+}
+.preview-canvas-tools button:disabled { opacity: 0.4; }
+.preview-canvas-tools input {
+  width: 92px;
+  accent-color: #e87562;
+}
+.preview-canvas-tools > span { flex: 1; }
 .preview-transform {
   display: flex;
   justify-content: space-between;
@@ -1224,10 +1249,13 @@ footer {
 }
 .preview-image.heart,
 .expanded-background.heart {
-  clip-path: polygon(
-    50% 94%, 8% 60%, 1% 36%, 8% 16%, 25% 7%, 42% 12%,
-    50% 27%, 58% 12%, 75% 7%, 92% 16%, 99% 36%, 92% 60%
-  );
+  clip-path: none;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 90C-8 55 8 12 30 18C43 2 50 18 50 28C50 18 57 2 70 18C92 12 108 55 50 90Z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 90C-8 55 8 12 30 18C43 2 50 18 50 28C50 18 57 2 70 18C92 12 108 55 50 90Z'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
 }
 .preview-image.star,
 .expanded-background.star {
@@ -1250,7 +1278,7 @@ footer {
 }
 .measure-preview {
   position: absolute;
-  inset: auto 7% 7%;
+  width: 86%;
   height: 28%;
   border-bottom: 2px solid #e66d5b;
   color: #c65d4d;
@@ -1259,7 +1287,10 @@ footer {
     monospace;
   pointer-events: none;
   text-align: center;
+  transform: translate(-50%, -50%);
+  cursor: move;
 }
+.measure-preview.editable { pointer-events: auto; }
 .measure-preview:before,
 .measure-preview:after {
   content: "";
