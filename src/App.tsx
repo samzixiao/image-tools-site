@@ -628,16 +628,19 @@ function App() {
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedMarkerId(marker.id);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
   function beginMarkerLabelDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedMarkerId(marker.id);
     setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
   function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
     event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedTextId(layer.id);
     setTextDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
   }
@@ -845,8 +848,8 @@ function App() {
   function dimensionLabel(marker: DimensionMarker) {
     const value = Number(marker.value) || 0;
     return marker.unit === "cm"
-      ? `${marker.value || "0"} cm / ${(value / 2.54).toFixed(2)} in`
-      : `${marker.value || "0"} in / ${(value * 2.54).toFixed(2)} cm`;
+      ? `${value.toFixed(2)} cm / ${(value / 2.54).toFixed(2)} in`
+      : `${value.toFixed(2)} in / ${(value * 2.54).toFixed(2)} cm`;
   }
   function drawDimensionMarker(
     ctx: CanvasRenderingContext2D,
@@ -1526,9 +1529,9 @@ function App() {
               title="Text, watermark & canvas"
               sub="Add a caption, background, or border"
             />
-            <div className="text-panel">
+            <div className="caption-module">
               <button
-                className="add-text"
+                className="caption-add"
                 disabled={!url}
                 onClick={() => {
                   const id = Date.now();
@@ -1539,7 +1542,7 @@ function App() {
                 ＋ Add text layer
               </button>
               {selectedText && (
-                <div className="text-editor">
+                <div className="caption-editor">
                   <input
                     placeholder="Caption or watermark"
                     value={selectedText.content}
@@ -1569,11 +1572,11 @@ function App() {
                         <option value="Open Sans">Open Sans</option>
                       </select>
                     </label>
-                    <label className="outline-toggle">
+                    <label className="caption-weight-toggle">
                       <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
                     </label>
                     <button
-                      className="delete-text"
+                      className="caption-remove"
                       onClick={() => {
                         setTextLayers((current) => current.filter((layer) => layer.id !== selectedText.id));
                         setSelectedTextId(null);
@@ -1585,7 +1588,7 @@ function App() {
                 </div>
               )}
               {textLayers.length > 0 && (
-                <div className="text-layer-list">
+                <div className="caption-list">
                   {textLayers.map((layer, index) => (
                     <button key={layer.id} className={layer.id === selectedTextId ? "active" : ""} onClick={() => setSelectedTextId(layer.id)}>
                       Text {index + 1} · {layer.content || "Empty"}
@@ -1721,9 +1724,9 @@ function App() {
               title="Product details"
               sub="Add movable bilingual dimension markers and a text layer"
             />
-            <div className="dimension-panel">
+            <div className="measure-module">
               <button
-                className="add-dimension"
+                className="measure-add"
                 disabled={!url}
                 onClick={() => {
                   const id = Date.now();
@@ -1752,7 +1755,7 @@ function App() {
                 ＋ Add dimension arrow
               </button>
               {selectedMarker && (
-                <div className="dimension-editor">
+                <div className="measure-editor">
                   <label>
                     Measurement
                     <div>
@@ -1822,7 +1825,7 @@ function App() {
                       <option value="none">Plain line</option>
                     </select>
                   </label>
-                  <div className="dimension-label-controls">
+                  <div className="measure-label-controls">
                     <b>Dimension text</b>
                     <label>
                       Text rotate <b>{Math.round(selectedMarker.labelRotation)}°</b>
@@ -1832,14 +1835,14 @@ function App() {
                       Text size <b>{selectedMarker.labelScale.toFixed(1)}×</b>
                       <input type="range" min="0.4" max="3" step="0.1" value={selectedMarker.labelScale} onChange={(event) => updateSelectedMarker({ labelScale: Number(event.target.value) })} />
                     </label>
-                    <div className="dimension-flips">
+                    <div className="measure-label-actions">
                       <button className={selectedMarker.labelFlipX ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipX: !selectedMarker.labelFlipX })}>Flip text H</button>
                       <button className={selectedMarker.labelFlipY ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipY: !selectedMarker.labelFlipY })}>Flip text V</button>
                     </div>
                     <small>Drag the dimension text itself in the preview to move it separately.</small>
                   </div>
                   <button
-                    className="delete-dimension"
+                    className="measure-remove"
                     onClick={() => {
                       setDimensionMarkers((current) =>
                         current.filter((marker) => marker.id !== selectedMarker.id),
@@ -1852,7 +1855,7 @@ function App() {
                 </div>
               )}
               {dimensionMarkers.length > 0 && (
-                <div className="dimension-list">
+                <div className="measure-list">
                   {dimensionMarkers.map((marker, index) => (
                     <button
                       key={marker.id}
@@ -2000,7 +2003,7 @@ function App() {
                   {dimensionMarkers.map((marker) => (
                     <div key={marker.id} className="dimension-group">
                       <div
-                        className={marker.id === selectedMarkerId ? "dimension-line selected editable" : "dimension-line editable"}
+                        className={marker.id === selectedMarkerId ? "measure-line selected editable" : "measure-line editable"}
                         onPointerDown={(event) => beginMarkerDrag(event, marker)}
                         onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
                         style={{
@@ -2027,7 +2030,7 @@ function App() {
                         </svg>
                       </div>
                       <div
-                        className="dimension-label editable"
+                        className="measure-label editable"
                         onPointerDown={(event) => beginMarkerLabelDrag(event, marker)}
                         onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
                         style={{
@@ -2044,7 +2047,7 @@ function App() {
                   {textLayers.map((layer) => (
                     <div
                       key={layer.id}
-                      className={layer.id === selectedTextId ? "text-preview selected editable" : "text-preview editable"}
+                      className={layer.id === selectedTextId ? "caption-overlay selected editable" : "caption-overlay editable"}
                       onPointerDown={(event) => beginTextDrag(event, layer)}
                       onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
                       style={{

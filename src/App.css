@@ -697,15 +697,15 @@ footer {
   background: #fff8f5;
   color: #bd594b;
 }
-.text-panel {
+.caption-module {
   margin: 14px 0 0 26px;
   padding: 10px;
   border: 1px solid #e3e5df;
   border-radius: 5px;
   background: #fff;
 }
-.add-text,
-.delete-text {
+.caption-add,
+.caption-remove {
   border: 1px solid #e77967;
   border-radius: 4px;
   padding: 6px 8px;
@@ -713,32 +713,32 @@ footer {
   color: #bd594b;
   font-size: 10px;
 }
-.add-text:disabled { opacity: 0.45; cursor: not-allowed; }
-.text-editor {
+.caption-add:disabled { opacity: 0.45; cursor: not-allowed; }
+.caption-editor {
   margin-top: 9px;
   padding-top: 9px;
   border-top: 1px solid #eceee9;
 }
-.text-editor > input {
+.caption-editor > input {
   width: 100%;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 7px;
   font-size: 10px;
 }
-.text-editor > div,
-.text-panel > div {
+.caption-editor > div,
+.caption-module > div {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-top: 8px;
 }
-.text-layer-list {
+.caption-list {
   display: flex !important;
   flex-wrap: wrap;
   gap: 5px;
 }
-.text-layer-list button {
+.caption-list button {
   border: 1px solid #e0e3dd;
   border-radius: 4px;
   padding: 4px 6px;
@@ -746,28 +746,28 @@ footer {
   color: #7d827a;
   font-size: 9px;
 }
-.text-layer-list button.active { border-color: #e77967; background: #fff2ed; color: #bd594b; }
-.delete-text { border-color: #efd3cd; background: #fff; color: #a5685d; }
-.text-panel label {
+.caption-list button.active { border-color: #e77967; background: #fff2ed; color: #bd594b; }
+.caption-remove { border-color: #efd3cd; background: #fff; color: #a5685d; }
+.caption-module label {
   display: flex;
   align-items: center;
   gap: 4px;
   color: #777;
   font-size: 9px;
 }
-.outline-toggle {
+.caption-weight-toggle {
   grid-column: span 1;
   white-space: nowrap;
 }
-.outline-toggle input { accent-color: #e87562; }
-.text-panel input[type="color"] {
+.caption-weight-toggle input { accent-color: #e87562; }
+.caption-module input[type="color"] {
   width: 28px;
   height: 25px;
   padding: 1px;
   border: 1px solid #ddd;
 }
-.text-panel input[type="number"],
-.text-panel select {
+.caption-module input[type="number"],
+.caption-module select {
   width: 58px;
   min-width: 0;
   border: 1px solid #ddd;
@@ -779,7 +779,7 @@ footer {
   width: calc(100% - 26px);
   margin: 8px 0 0 26px;
 }
-.text-preview {
+.caption-overlay {
   position: absolute;
   z-index: 5;
   text-align: center;
@@ -790,9 +790,11 @@ footer {
   cursor: move;
   pointer-events: none;
   white-space: pre-wrap;
+  touch-action: none;
+  user-select: none;
 }
-.text-preview.editable { pointer-events: auto; }
-.text-preview.selected { outline: 0; }
+.caption-overlay.editable { pointer-events: auto; }
+.caption-overlay.selected { outline: 0; }
 .border-preview {
   position: absolute;
   inset: 0;
@@ -1217,15 +1219,15 @@ footer {
 .shape small {
   font-size: 9px;
 }
-.dimension-panel {
+.measure-module {
   margin: 10px 0 0 26px;
   padding: 10px;
   background: #fff;
   border: 1px solid #e3e5df;
   border-radius: 5px;
 }
-.add-dimension,
-.delete-dimension {
+.measure-add,
+.measure-remove {
   border: 1px solid #e77967;
   border-radius: 4px;
   padding: 6px 8px;
@@ -1233,29 +1235,29 @@ footer {
   color: #bd594b;
   font-size: 10px;
 }
-.add-dimension:disabled {
+.measure-add:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.dimension-editor {
+.measure-editor {
   display: grid;
   gap: 9px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid #eceee9;
 }
-.dimension-editor label {
+.measure-editor label {
   display: grid;
   gap: 4px;
   color: #71766e;
   font-size: 10px;
 }
-.dimension-editor label > div {
+.measure-editor label > div {
   display: flex;
   gap: 5px;
 }
-.dimension-editor input[type="number"],
-.dimension-editor select {
+.measure-editor input[type="number"],
+.measure-editor select {
   min-width: 0;
   border: 1px solid #dfe2dc;
   border-radius: 4px;
@@ -1263,33 +1265,33 @@ footer {
   color: #59635a;
   font-size: 10px;
 }
-.dimension-editor input[type="number"] { flex: 1; }
-.dimension-editor input[type="range"] {
+.measure-editor input[type="number"] { flex: 1; }
+.measure-editor input[type="range"] {
   width: 100%;
   accent-color: #e87562;
 }
-.dimension-editor b {
+.measure-editor b {
   float: right;
   color: #bd594b;
   font: 10px "DM Mono", monospace;
 }
-.dimension-editor small {
+.measure-editor small {
   font-size: 9px;
   color: #a0a49d;
 }
-.delete-dimension {
+.measure-remove {
   justify-self: start;
   border-color: #efd3cd;
   background: #fff;
   color: #a5685d;
 }
-.dimension-list {
+.measure-list {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 10px;
 }
-.dimension-list button {
+.measure-list button {
   border: 1px solid #e0e3dd;
   border-radius: 4px;
   padding: 4px 6px;
@@ -1297,7 +1299,7 @@ footer {
   color: #7d827a;
   font-size: 9px;
 }
-.dimension-list button.active {
+.measure-list button.active {
   border-color: #e77967;
   background: #fff2ed;
   color: #bd594b;
@@ -1342,24 +1344,26 @@ footer {
 .expanded-background.sticker {
   clip-path: inset(0 round 9%);
 }
-.dimension-line {
+.measure-line {
   position: absolute;
   z-index: 11;
   height: 24px;
   pointer-events: none;
   cursor: move;
   transform-origin: center center;
+  touch-action: none;
+  user-select: none;
 }
-.dimension-line.editable,
-.dimension-label.editable { pointer-events: auto; }
-.dimension-line.selected { filter: none; }
-.dimension-line svg {
+.measure-line.editable,
+.measure-label.editable { pointer-events: auto; }
+.measure-line.selected { filter: none; }
+.measure-line svg {
   display: block;
   width: 100%;
   height: 100%;
   overflow: visible;
 }
-.dimension-label {
+.measure-label {
   position: absolute;
   z-index: 12;
   background: transparent;
@@ -1374,8 +1378,10 @@ footer {
   cursor: move;
   pointer-events: none;
   transform-origin: center center;
+  touch-action: none;
+  user-select: none;
 }
-.dimension-label-controls {
+.measure-label-controls {
   display: grid;
   gap: 8px;
   padding: 9px;
@@ -1383,15 +1389,15 @@ footer {
   border-radius: 4px;
   background: #fafbf8;
 }
-.dimension-label-controls > b {
+.measure-label-controls > b {
   color: #626960;
   font-size: 10px;
 }
-.dimension-flips {
+.measure-label-actions {
   display: flex;
   gap: 5px;
 }
-.dimension-flips button {
+.measure-label-actions button {
   border: 1px solid #dfe2dc;
   border-radius: 4px;
   padding: 5px 7px;
@@ -1399,7 +1405,7 @@ footer {
   color: #71766e;
   font-size: 9px;
 }
-.dimension-flips button.active {
+.measure-label-actions button.active {
   border-color: #e77967;
   color: #bd594b;
 }
