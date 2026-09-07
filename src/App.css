@@ -840,19 +840,19 @@ footer {
 .caption-delete-handle {
   position: absolute;
   z-index: 21;
-  top: -11px;
-  right: -11px;
+  top: -4px;
+  right: -38px;
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid #fff;
   border-radius: 50%;
-  background: #3d4851;
+  background: #d95848;
   color: #fff;
   box-shadow: 0 1px 4px #0004;
   cursor: pointer;
-  font-size: 17px;
+  font-size: 22px;
   line-height: 1;
 }
 .border-preview {

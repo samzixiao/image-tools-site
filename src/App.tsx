@@ -1606,7 +1606,7 @@ function App() {
                 disabled={!url}
                 onClick={() => {
                   const id = Date.now();
-                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#ffffff", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
+                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#111111", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
                   setSelectedTextId(id);
                 }}
               >
@@ -1816,7 +1816,7 @@ function App() {
                       position: { x: 0.5, y: 0.76 },
                       length: 38,
                       rotation: 0,
-                      color: "#e66d5b",
+                      color: "#111111",
                       thickness: 1,
                       endStyle: "arrows",
                       labelPosition: { x: 0.5, y: 0.69 },
