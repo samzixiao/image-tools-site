@@ -963,6 +963,56 @@ footer {
   pointer-events: auto;
   cursor: move;
 }
+.image-layer-preview {
+  position: absolute;
+  z-index: 8;
+  height: auto !important;
+  max-width: none !important;
+  transform: translate(-50%, -50%) !important;
+  filter: none !important;
+  pointer-events: auto;
+  cursor: move;
+}
+.image-layer-preview.selected { outline: 2px dashed #e77967; outline-offset: 3px; }
+.collage-tile {
+  position: absolute;
+  z-index: 4;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  pointer-events: auto;
+  cursor: pointer;
+  background: #e8ebe7;
+}
+.collage-tile.selected { outline: 2px solid #e77967; outline-offset: -2px; }
+.collage-tile img { width: 100%; height: 100%; object-fit: cover; }
+.layers-panel {
+  margin: 10px 0 0 26px;
+  padding: 10px;
+  border: 1px solid #e3e5df;
+  border-radius: 6px;
+  background: #fff;
+  display: grid;
+  gap: 12px;
+}
+.layer-section { display: grid; gap: 7px; }
+.layer-section > b { color: #59625c; font-size: 10px; }
+.layer-section > button, .layer-controls button, .collage-templates button, .layer-list button {
+  border: 1px solid #dfe2dc;
+  border-radius: 4px;
+  background: #fff;
+  color: #64706a;
+  padding: 6px 7px;
+  font-size: 9px;
+}
+.layer-section > button { justify-self: start; }
+.layer-list, .collage-templates { display: flex; flex-wrap: wrap; gap: 5px; }
+.layer-list button, .collage-templates button { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-list button.active, .collage-templates button.active { border-color: #e77967; background: #fff2ed; color: #bd594b; }
+.layer-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.layer-controls label { font-size: 9px; color: #777; display: flex; gap: 4px; align-items: center; }
+.layer-controls input { width: 72px; accent-color: #e87562; }
+.layer-section small { font-size: 8px; color: #979c96; line-height: 1.4; }
 .overlay-preview.top-left {
   top: 3.5%;
   left: 3.5%;

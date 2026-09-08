@@ -50,6 +50,15 @@ type TextLayer = {
   boxWidth: number;
   boxHeight: number;
 };
+type ImageLayer = {
+  id: number;
+  url: string;
+  name: string;
+  position: { x: number; y: number };
+  width: number;
+  opacity: number;
+};
+type CollageImage = { id: number; url: string; name: string; scale: number };
 type Preset = {
   id: string;
   group: string;
@@ -173,6 +182,16 @@ const defaultPolygonPoints = [
   { x: 0.12, y: 0.5 },
   { x: 0.28, y: 0.2 },
 ];
+const collageTemplates = [
+  { id: "two", label: "2 · Split", slots: [{ x: 0, y: 0, w: 0.5, h: 1 }, { x: 0.5, y: 0, w: 0.5, h: 1 }] },
+  { id: "three", label: "3 · Feature", slots: [{ x: 0, y: 0, w: 0.6, h: 1 }, { x: 0.6, y: 0, w: 0.4, h: 0.5 }, { x: 0.6, y: 0.5, w: 0.4, h: 0.5 }] },
+  { id: "four", label: "4 · Grid", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.5, h: 0.5 }, { x: 0, y: 0.5, w: 0.5, h: 0.5 }, { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }] },
+  { id: "five", label: "5 · Hero", slots: [{ x: 0, y: 0, w: 0.6, h: 0.6 }, { x: 0.6, y: 0, w: 0.4, h: 0.3 }, { x: 0.6, y: 0.3, w: 0.4, h: 0.3 }, { x: 0, y: 0.6, w: 0.5, h: 0.4 }, { x: 0.5, y: 0.6, w: 0.5, h: 0.4 }] },
+  { id: "six", label: "6 · Tiles", slots: [{ x: 0, y: 0, w: 1 / 3, h: 0.5 }, { x: 1 / 3, y: 0, w: 1 / 3, h: 0.5 }, { x: 2 / 3, y: 0, w: 1 / 3, h: 0.5 }, { x: 0, y: 0.5, w: 1 / 3, h: 0.5 }, { x: 1 / 3, y: 0.5, w: 1 / 3, h: 0.5 }, { x: 2 / 3, y: 0.5, w: 1 / 3, h: 0.5 }] },
+  { id: "seven", label: "7 · Magazine", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.25, h: 1 / 3 }, { x: 0.75, y: 0, w: 0.25, h: 1 / 3 }, { x: 0, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.25, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.5, y: 1 / 3, w: 0.25, h: 2 / 3 }, { x: 0.75, y: 1 / 3, w: 0.25, h: 2 / 3 }] },
+  { id: "eight", label: "8 · Mosaic", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.25, h: 0.25 }, { x: 0.75, y: 0, w: 0.25, h: 0.25 }, { x: 0.5, y: 0.25, w: 0.25, h: 0.25 }, { x: 0.75, y: 0.25, w: 0.25, h: 0.25 }, { x: 0, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.25, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }] },
+  { id: "nine", label: "9 · Grid", slots: Array.from({ length: 9 }, (_, index) => ({ x: (index % 3) / 3, y: Math.floor(index / 3) / 3, w: 1 / 3, h: 1 / 3 })) },
+] as const;
 
 function App() {
   const [url, setUrl] = useState(""),
@@ -220,17 +239,17 @@ function App() {
     height: number;
   } | null>(null);
   const [editingTextId, setEditingTextId] = useState<number | null>(null);
-  const [overlayUrl, setOverlayUrl] = useState(""),
-    [overlayOpacity, setOverlayOpacity] = useState(80),
-    [overlayPosition, setOverlayPosition] = useState<
-      "top-left" | "top-right" | "bottom-left" | "bottom-right"
-    >("bottom-right"),
+  const [imageLayers, setImageLayers] = useState<ImageLayer[]>([]),
+    [selectedImageLayerId, setSelectedImageLayerId] = useState<number | null>(null),
+    [collageImages, setCollageImages] = useState<CollageImage[]>([]),
+    [selectedCollageImageId, setSelectedCollageImageId] = useState<number | null>(null),
+    [collageTemplateId, setCollageTemplateId] = useState("two"),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
-  const [overlayOffset, setOverlayOffset] = useState({ x: 0.84, y: 0.84 });
-  const [overlayDrag, setOverlayDrag] = useState<{
+  const [layerDrag, setLayerDrag] = useState<{
+    id: number;
     x: number;
     y: number;
-    position: typeof overlayOffset;
+    position: ImageLayer["position"];
   } | null>(null);
   const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
     [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
@@ -301,7 +320,8 @@ function App() {
       mode: "crop" | "fit";
     } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null),
-    overlayInput = useRef<HTMLInputElement>(null),
+    layerInput = useRef<HTMLInputElement>(null),
+    collageInput = useRef<HTMLInputElement>(null),
     privacyInput = useRef<HTMLInputElement>(null);
   const output =
       preset.id === "custom"
@@ -367,10 +387,29 @@ function App() {
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
   }
-  function loadOverlay(file?: File) {
-    if (!file || !file.type.startsWith("image/")) return;
-    setOverlayUrl(URL.createObjectURL(file));
-    setOverlayOffset({ x: 0.84, y: 0.84 });
+  function addImageLayers(files: FileList | File[]) {
+    const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (!images.length) return;
+    const firstId = Date.now();
+    setImageLayers((current) => [
+      ...current,
+      ...images.map((file, index) => ({
+        id: firstId + index,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        position: { x: Math.min(0.82, 0.5 + index * 0.045), y: Math.min(0.82, 0.5 + index * 0.045) },
+        width: 28,
+        opacity: 100,
+      })),
+    ]);
+    setSelectedImageLayerId(firstId);
+  }
+  function addCollageImages(files: FileList | File[]) {
+    const images = Array.from(files).filter((file) => file.type.startsWith("image/")).slice(0, 9);
+    if (!images.length) return;
+    const firstId = Date.now();
+    setCollageImages(images.map((file, index) => ({ id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1 })));
+    setSelectedCollageImageId(firstId);
   }
   function choosePreset(next: Preset) {
     setPreset(next);
@@ -417,6 +456,7 @@ function App() {
       setAddingPolygonPoint(false);
       return;
     }
+    if (shape === "polygon") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
       x: event.clientX,
@@ -468,11 +508,12 @@ function App() {
       setTextLayers((current) => current.map((layer) => layer.id === textResizeDrag.id ? { ...layer, boxWidth, boxHeight } : layer));
       return;
     }
-    if (overlayDrag) {
-      setOverlayOffset({
-        x: Math.min(0.9, Math.max(0.1, overlayDrag.position.x + (event.clientX - overlayDrag.x) / box.width)),
-        y: Math.min(0.9, Math.max(0.1, overlayDrag.position.y + (event.clientY - overlayDrag.y) / box.height)),
-      });
+    if (layerDrag) {
+      const position = {
+        x: Math.min(0.9, Math.max(0.1, layerDrag.position.x + (event.clientX - layerDrag.x) / box.width)),
+        y: Math.min(0.9, Math.max(0.1, layerDrag.position.y + (event.clientY - layerDrag.y) / box.height)),
+      };
+      setImageLayers((current) => current.map((layer) => layer.id === layerDrag.id ? { ...layer, position } : layer));
       return;
     }
     if (stickerResizeDrag) {
@@ -654,9 +695,11 @@ function App() {
     event.stopPropagation();
     setStickerResizeDrag({ x: event.clientX, id: cover.id, size: cover.size });
   }
-  function beginOverlayDrag(event: PointerEvent<HTMLImageElement>) {
+  function beginLayerDrag(event: PointerEvent<HTMLImageElement>, layer: ImageLayer) {
     event.stopPropagation();
-    setOverlayDrag({ x: event.clientX, y: event.clientY, position: overlayOffset });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedImageLayerId(layer.id);
+    setLayerDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -717,7 +760,11 @@ function App() {
     setBorderWidth(0);
     setTextLayers([]);
     setSelectedTextId(null);
-    setOverlayUrl("");
+    setImageLayers([]);
+    setSelectedImageLayerId(null);
+    setCollageImages([]);
+    setSelectedCollageImageId(null);
+    setCollageTemplateId("two");
     setExpandMode("none");
     setPrivacySticker("");
     setPrivacyCovers([]);
@@ -1063,6 +1110,25 @@ function App() {
       image.src = source;
     });
   }
+  function drawCoverImage(
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    scale = 1,
+  ) {
+    const ratio = Math.max(width / image.naturalWidth, height / image.naturalHeight) * scale;
+    const drawWidth = image.naturalWidth * ratio;
+    const drawHeight = image.naturalHeight * ratio;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.clip();
+    ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+    ctx.restore();
+  }
   async function download() {
     if (!url) return;
     const image = await loadImage(url);
@@ -1116,6 +1182,21 @@ function App() {
       drawHeight,
     );
     ctx.restore();
+    for (const item of collageImages) {
+      const slot = collageTemplates.find((template) => template.id === collageTemplateId)?.slots[collageImages.indexOf(item)];
+      if (!slot) continue;
+      const collageImage = await loadImage(item.url);
+      drawCoverImage(ctx, collageImage, slot.x * canvas.width, slot.y * canvas.height, slot.w * canvas.width, slot.h * canvas.height, item.scale);
+    }
+    for (const layer of imageLayers) {
+      const overlay = await loadImage(layer.url);
+      const targetWidth = canvas.width * (layer.width / 100);
+      const targetHeight = (targetWidth * overlay.naturalHeight) / overlay.naturalWidth;
+      ctx.save();
+      ctx.globalAlpha = layer.opacity / 100;
+      ctx.drawImage(overlay, layer.position.x * canvas.width - targetWidth / 2, layer.position.y * canvas.height - targetHeight / 2, targetWidth, targetHeight);
+      ctx.restore();
+    }
     privacyCovers
       .filter((cover) => cover.kind === "mosaic")
       .forEach((cover) => drawMosaic(ctx, canvas.width, canvas.height, cover));
@@ -1142,18 +1223,6 @@ function App() {
       (item) => item.kind !== "mosaic",
     ))
       await drawPrivacySticker(ctx, canvas.width, canvas.height, cover);
-    if (overlayUrl) {
-      const overlay = await loadImage(overlayUrl);
-      const targetWidth = canvas.width * 0.22,
-        targetHeight =
-          (targetWidth * overlay.naturalHeight) / overlay.naturalWidth,
-        x = overlayOffset.x * canvas.width - targetWidth / 2,
-        y = overlayOffset.y * canvas.height - targetHeight / 2;
-      ctx.save();
-      ctx.globalAlpha = overlayOpacity / 100;
-      ctx.drawImage(overlay, x, y, targetWidth, targetHeight);
-      ctx.restore();
-    }
     const extension = format.split("/")[1].replace("jpeg", "jpg"),
       link = document.createElement("a");
     link.download = `${fileName.replace(/\.[^.]+$/, "") || "image"}-${output.width}x${output.height}.${extension}`;
@@ -1171,6 +1240,9 @@ function App() {
     (marker) => marker.id === selectedMarkerId,
   );
   const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
+  const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
+  const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
+  const selectedCollageTemplate = collageTemplates.find((template) => template.id === collageTemplateId) ?? collageTemplates[0];
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
     setDimensionMarkers((current) =>
@@ -1363,9 +1435,48 @@ function App() {
             )}
             <Step
               n="04"
-              title="Transform & effects"
-              sub="Make the image fit and add useful details"
+              title="Layers & collage"
+              sub="Stack multiple image layers or build a 2–9 image collage"
             />
+            <div className="layers-panel">
+              <div className="layer-section">
+                <b>Image layers</b>
+                <button disabled={!url} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
+                <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
+                {imageLayers.length > 0 && (
+                  <div className="layer-list">
+                    {imageLayers.map((layer, index) => (
+                      <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => setSelectedImageLayerId(layer.id)}>Layer {index + 1} · {layer.name}</button>
+                    ))}
+                  </div>
+                )}
+                {selectedImageLayer && (
+                  <div className="layer-controls">
+                    <label>Size <input type="range" min="8" max="90" value={selectedImageLayer.width} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, width: Number(event.target.value) } : layer))} /></label>
+                    <label>Opacity <input type="range" min="10" max="100" value={selectedImageLayer.opacity} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, opacity: Number(event.target.value) } : layer))} /></label>
+                    <button onClick={() => { setImageLayers((current) => current.filter((layer) => layer.id !== selectedImageLayer.id)); setSelectedImageLayerId(null); }}>Delete layer</button>
+                  </div>
+                )}
+                <small>Add as many images as needed. Drag a layer directly in the preview to reposition it.</small>
+              </div>
+              <div className="layer-section collage-section">
+                <b>Collage board</b>
+                <div className="collage-templates">
+                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { setCollageTemplateId(template.id); setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
+                </div>
+                <button disabled={!url} onClick={() => collageInput.current?.click()}>Upload 2–9 collage images</button>
+                <input ref={collageInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
+                {collageImages.length > 0 && (
+                  <div className="layer-list">
+                    {collageImages.map((item, index) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Tile {index + 1} · {item.name}</button>)}
+                  </div>
+                )}
+                {selectedCollageImage && (
+                  <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => { setCollageImages((current) => current.filter((item) => item.id !== selectedCollageImage.id)); setSelectedCollageImageId(null); }}>Remove tile</button></div>
+                )}
+                <small>{selectedCollageTemplate.slots.length} slots · uploaded images automatically fill their template boxes; select a tile to zoom it.</small>
+              </div>
+            </div>
             <Step
               n="05"
               title="Smart canvas extend"
@@ -1741,53 +1852,6 @@ function App() {
               >
                 Restore original
               </button>
-              <button onClick={() => overlayInput.current?.click()}>
-                Add logo/image layer
-              </button>
-              <input
-                ref={overlayInput}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                  loadOverlay(event.target.files?.[0])
-                }
-              />
-              {overlayUrl && (
-                <div className="overlay-options">
-                  <label>
-                    Opacity{" "}
-                    <input
-                      type="range"
-                      min="10"
-                      max="100"
-                      value={overlayOpacity}
-                      onChange={(event) =>
-                        setOverlayOpacity(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <select
-                    value={overlayPosition}
-                    onChange={(event) => {
-                      const position = event.target.value as typeof overlayPosition;
-                      setOverlayPosition(position);
-                      setOverlayOffset({
-                        x: position.endsWith("right") ? 0.84 : 0.16,
-                        y: position.startsWith("bottom") ? 0.84 : 0.16,
-                      });
-                    }}
-                  >
-                    <option value="top-left">Top left</option>
-                    <option value="top-right">Top right</option>
-                    <option value="bottom-left">Bottom left</option>
-                    <option value="bottom-right">Bottom right</option>
-                  </select>
-                  <button onClick={() => setOverlayUrl("")}>
-                    Remove layer
-                  </button>
-                </div>
-              )}
               <small>
                 Pure-color removal samples the top-left background. Use PNG for
                 transparency.
@@ -1982,7 +2046,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -2000,7 +2064,7 @@ function App() {
                 setPolygonDrag(null);
                 setStickerDrag(null);
                 setStickerResizeDrag(null);
-                setOverlayDrag(null);
+                setLayerDrag(null);
                 setMarkerDrag(null);
                 setMarkerResizeDrag(null);
                 setMarkerLabelDrag(null);
@@ -2029,6 +2093,22 @@ function App() {
                       clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                     }}
                   />
+                  {collageImages.map((item, index) => {
+                    const slot = selectedCollageTemplate.slots[index];
+                    if (!slot) return null;
+                    return <div key={item.id} className={item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /></div>;
+                  })}
+                  {imageLayers.map((layer) => (
+                    <img
+                      key={layer.id}
+                      src={layer.url}
+                      alt={layer.name}
+                      className={layer.id === selectedImageLayerId ? "image-layer-preview selected editable" : "image-layer-preview editable"}
+                      onPointerDown={(event) => beginLayerDrag(event, layer)}
+                      onClick={(event) => { event.stopPropagation(); setSelectedImageLayerId(layer.id); }}
+                      style={{ opacity: layer.opacity / 100, width: `${layer.width}%`, left: `${layer.position.x * 100}%`, top: `${layer.position.y * 100}%` }}
+                    />
+                  ))}
                   {sizeSelected && mode === "crop" && shape !== "polygon" && (
                     <div
                       className="crop editable"
@@ -2234,19 +2314,6 @@ function App() {
                       )}
                     </span>
                   ))}
-                  {overlayUrl && (
-                    <img
-                      src={overlayUrl}
-                      alt="Overlay layer"
-                      className="overlay-preview editable"
-                      onPointerDown={beginOverlayDrag}
-                      style={{
-                        opacity: overlayOpacity / 100,
-                        left: `${overlayOffset.x * 100}%`,
-                        top: `${overlayOffset.y * 100}%`,
-                      }}
-                    />
-                  )}
                   {borderWidth > 0 && (
                     <div
                       className="border-preview"
