@@ -243,7 +243,8 @@ function App() {
     [selectedImageLayerId, setSelectedImageLayerId] = useState<number | null>(null),
     [collageImages, setCollageImages] = useState<CollageImage[]>([]),
     [selectedCollageImageId, setSelectedCollageImageId] = useState<number | null>(null),
-    [collageTemplateId, setCollageTemplateId] = useState("two"),
+    [collageTemplateId, setCollageTemplateId] = useState<string | null>(null),
+    [collageUploadStart, setCollageUploadStart] = useState<number | null>(null),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
   const [layerDrag, setLayerDrag] = useState<{
     id: number;
@@ -411,10 +412,19 @@ function App() {
   }
   function addCollageImages(files: FileList | File[]) {
     const images = Array.from(files).filter((file) => file.type.startsWith("image/")).slice(0, 9);
-    if (!images.length) return;
+    const template = collageTemplates.find((item) => item.id === collageTemplateId);
+    if (!images.length || !template) return;
     const firstId = Date.now();
-    setCollageImages(images.map((file, index) => ({ id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1 })));
+    const start = collageUploadStart ?? 0;
+    setCollageImages((current) => {
+      const next = collageUploadStart === null ? [] : [...current];
+      images.slice(0, template.slots.length - start).forEach((file, index) => {
+        next[start + index] = { id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1 };
+      });
+      return next;
+    });
     setSelectedCollageImageId(firstId);
+    setCollageUploadStart(null);
   }
   function choosePreset(next: Preset) {
     setPreset(next);
@@ -780,7 +790,8 @@ function App() {
     setSelectedImageLayerId(null);
     setCollageImages([]);
     setSelectedCollageImageId(null);
-    setCollageTemplateId("two");
+    setCollageTemplateId(null);
+    setCollageUploadStart(null);
     setExpandMode("none");
     setPrivacySticker("");
     setPrivacyCovers([]);
@@ -1198,8 +1209,9 @@ function App() {
       drawHeight,
     );
     ctx.restore();
+    const collageTemplate = collageTemplates.find((template) => template.id === collageTemplateId);
     for (const item of collageImages) {
-      const slot = collageTemplates.find((template) => template.id === collageTemplateId)?.slots[collageImages.indexOf(item)];
+      const slot = collageTemplate?.slots[collageImages.indexOf(item)];
       if (!slot) continue;
       const collageImage = await loadImage(item.url);
       drawCoverImage(ctx, collageImage, slot.x * canvas.width, slot.y * canvas.height, slot.w * canvas.width, slot.h * canvas.height, item.scale);
@@ -1258,7 +1270,7 @@ function App() {
   const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
-  const selectedCollageTemplate = collageTemplates.find((template) => template.id === collageTemplateId) ?? collageTemplates[0];
+  const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
     setDimensionMarkers((current) =>
@@ -1305,7 +1317,7 @@ function App() {
             <Step
               n="01"
               title="Upload your image"
-              sub="JPG, PNG, WebP · up to 50 MB"
+              sub="One main image · JPG, PNG, WebP · up to 50 MB"
             />
             <button
               className="upload"
@@ -1319,10 +1331,12 @@ function App() {
               ref={fileInput}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple={false}
               hidden
-              onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                loadFile(event.target.files?.[0])
-              }
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                loadFile(event.target.files?.[0]);
+                event.target.value = "";
+              }}
             />
             {fileName && (
               <p className="file">
@@ -1480,9 +1494,9 @@ function App() {
               <div className="layer-section collage-section">
                 <b>Collage board</b>
                 <div className="collage-templates">
-                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { setCollageTemplateId(template.id); setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
+                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
                 </div>
-                <button disabled={!url} onClick={() => collageInput.current?.click()}>Upload 2–9 collage images</button>
+                <button disabled={!selectedCollageTemplate} onClick={() => { setCollageUploadStart(null); collageInput.current?.click(); }}>Upload 2–9 collage images</button>
                 <input ref={collageInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
                 {collageImages.length > 0 && (
                   <div className="layer-list">
@@ -1492,7 +1506,7 @@ function App() {
                 {selectedCollageImage && (
                   <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => { setCollageImages((current) => current.filter((item) => item.id !== selectedCollageImage.id)); setSelectedCollageImageId(null); }}>Remove tile</button></div>
                 )}
-                <small>{selectedCollageTemplate.slots.length} slots · uploaded images automatically fill their template boxes; select a tile to zoom it.</small>
+                <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add an image directly, or upload a batch.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
             </div>
             <Step
@@ -2091,9 +2105,9 @@ function App() {
                 setTextResizeDrag(null);
               }}
             >
-              {url ? (
+              {url || selectedCollageTemplate ? (
                 <>
-                  {(expandMode === "blur" || expandMode === "mirror") && (
+                  {url && (expandMode === "blur" || expandMode === "mirror") && (
                     <img
                       src={url}
                       alt="Extended background"
@@ -2103,7 +2117,7 @@ function App() {
                       }}
                     />
                   )}
-                  <img
+                  {url && <img
                     src={url}
                     alt="Preview"
                     className={`preview-image ${shape}`}
@@ -2111,10 +2125,10 @@ function App() {
                       ...previewStyle,
                       clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                     }}
-                  />
-                  {selectedCollageTemplate.slots.map((slot, index) => {
+                  />}
+                  {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages[index];
-                    return <div key={item?.id ?? `empty-${index}`} className={item?.id === selectedCollageImageId ? "collage-tile selected" : item ? "collage-tile" : "collage-tile empty"} onClick={(event) => { event.stopPropagation(); if (item) setSelectedCollageImageId(item.id); else collageInput.current?.click(); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>{item ? <img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /> : <span>＋</span>}</div>;
+                    return <div key={item?.id ?? `empty-${index}`} className={item?.id === selectedCollageImageId ? "collage-tile selected" : item ? "collage-tile" : "collage-tile empty"} onClick={(event) => { event.stopPropagation(); if (item) setSelectedCollageImageId(item.id); else { setCollageUploadStart(index); collageInput.current?.click(); } }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>{item ? <img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /> : <span>＋</span>}</div>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2128,7 +2142,7 @@ function App() {
                       {layer.id === selectedImageLayerId && <button className="image-layer-resize-handle" aria-label="Resize image layer" onPointerDown={(event) => beginLayerResize(event, layer)}>↘</button>}
                     </div>
                   ))}
-                  {sizeSelected && mode === "crop" && shape !== "polygon" && (
+                  {url && sizeSelected && mode === "crop" && shape !== "polygon" && (
                     <div
                       className="crop editable"
                       style={{
@@ -2156,7 +2170,7 @@ function App() {
                       ))}
                     </div>
                   )}
-                  {shape === "polygon" && (
+                  {url && shape === "polygon" && (
                     <svg className="polygon-preview" viewBox="0 0 100 100">
                       <polygon
                         points={polygonPoints
