@@ -251,6 +251,11 @@ function App() {
     y: number;
     position: ImageLayer["position"];
   } | null>(null);
+  const [layerResizeDrag, setLayerResizeDrag] = useState<{
+    id: number;
+    x: number;
+    width: number;
+  } | null>(null);
   const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
     [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
   const [markerDrag, setMarkerDrag] = useState<{
@@ -516,6 +521,11 @@ function App() {
       setImageLayers((current) => current.map((layer) => layer.id === layerDrag.id ? { ...layer, position } : layer));
       return;
     }
+    if (layerResizeDrag) {
+      const width = Math.min(90, Math.max(8, layerResizeDrag.width + ((event.clientX - layerResizeDrag.x) / box.width) * 100));
+      setImageLayers((current) => current.map((layer) => layer.id === layerResizeDrag.id ? { ...layer, width } : layer));
+      return;
+    }
     if (stickerResizeDrag) {
       const size = Math.min(70, Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
       setStickerSize(size);
@@ -695,11 +705,17 @@ function App() {
     event.stopPropagation();
     setStickerResizeDrag({ x: event.clientX, id: cover.id, size: cover.size });
   }
-  function beginLayerDrag(event: PointerEvent<HTMLImageElement>, layer: ImageLayer) {
+  function beginLayerDrag(event: PointerEvent<HTMLDivElement>, layer: ImageLayer) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedImageLayerId(layer.id);
     setLayerDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
+  }
+  function beginLayerResize(event: PointerEvent<HTMLButtonElement>, layer: ImageLayer) {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedImageLayerId(layer.id);
+    setLayerResizeDrag({ id: layer.id, x: event.clientX, width: layer.width });
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -1443,11 +1459,13 @@ function App() {
                 <b>Image layers</b>
                 <button disabled={!url} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
                 <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
-                {imageLayers.length > 0 && (
+                {(url || imageLayers.length > 0 || collageImages.length > 0) && (
                   <div className="layer-list">
+                    {url && <button className={selectedImageLayerId === null && selectedCollageImageId === null ? "active" : ""} onClick={() => { setSelectedImageLayerId(null); setSelectedCollageImageId(null); }}>Base image · {fileName || "Image"}</button>}
                     {imageLayers.map((layer, index) => (
                       <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => setSelectedImageLayerId(layer.id)}>Layer {index + 1} · {layer.name}</button>
                     ))}
+                    {collageImages.map((item, index) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Collage {index + 1} · {item.name}</button>)}
                   </div>
                 )}
                 {selectedImageLayer && (
@@ -2046,7 +2064,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -2065,6 +2083,7 @@ function App() {
                 setStickerDrag(null);
                 setStickerResizeDrag(null);
                 setLayerDrag(null);
+                setLayerResizeDrag(null);
                 setMarkerDrag(null);
                 setMarkerResizeDrag(null);
                 setMarkerLabelDrag(null);
@@ -2093,21 +2112,21 @@ function App() {
                       clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                     }}
                   />
-                  {collageImages.map((item, index) => {
-                    const slot = selectedCollageTemplate.slots[index];
-                    if (!slot) return null;
-                    return <div key={item.id} className={item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /></div>;
+                  {selectedCollageTemplate.slots.map((slot, index) => {
+                    const item = collageImages[index];
+                    return <div key={item?.id ?? `empty-${index}`} className={item?.id === selectedCollageImageId ? "collage-tile selected" : item ? "collage-tile" : "collage-tile empty"} onClick={(event) => { event.stopPropagation(); if (item) setSelectedCollageImageId(item.id); else collageInput.current?.click(); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>{item ? <img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /> : <span>＋</span>}</div>;
                   })}
                   {imageLayers.map((layer) => (
-                    <img
+                    <div
                       key={layer.id}
-                      src={layer.url}
-                      alt={layer.name}
-                      className={layer.id === selectedImageLayerId ? "image-layer-preview selected editable" : "image-layer-preview editable"}
+                      className={layer.id === selectedImageLayerId ? "image-layer-frame selected editable" : "image-layer-frame editable"}
                       onPointerDown={(event) => beginLayerDrag(event, layer)}
                       onClick={(event) => { event.stopPropagation(); setSelectedImageLayerId(layer.id); }}
                       style={{ opacity: layer.opacity / 100, width: `${layer.width}%`, left: `${layer.position.x * 100}%`, top: `${layer.position.y * 100}%` }}
-                    />
+                    >
+                      <img src={layer.url} alt={layer.name} />
+                      {layer.id === selectedImageLayerId && <button className="image-layer-resize-handle" aria-label="Resize image layer" onPointerDown={(event) => beginLayerResize(event, layer)}>↘</button>}
+                    </div>
                   ))}
                   {sizeSelected && mode === "crop" && shape !== "polygon" && (
                     <div
