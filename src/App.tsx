@@ -257,6 +257,11 @@ function App() {
     x: number;
     width: number;
   } | null>(null);
+  const [collageResizeDrag, setCollageResizeDrag] = useState<{
+    id: number;
+    x: number;
+    scale: number;
+  } | null>(null);
   const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
     [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
   const [markerDrag, setMarkerDrag] = useState<{
@@ -536,6 +541,11 @@ function App() {
       setImageLayers((current) => current.map((layer) => layer.id === layerResizeDrag.id ? { ...layer, width } : layer));
       return;
     }
+    if (collageResizeDrag) {
+      const scale = Math.min(2.5, Math.max(1, collageResizeDrag.scale + ((event.clientX - collageResizeDrag.x) / box.width) * 2));
+      setCollageImages((current) => current.map((item) => item.id === collageResizeDrag.id ? { ...item, scale } : item));
+      return;
+    }
     if (stickerResizeDrag) {
       const size = Math.min(70, Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
       setStickerSize(size);
@@ -726,6 +736,12 @@ function App() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedImageLayerId(layer.id);
     setLayerResizeDrag({ id: layer.id, x: event.clientX, width: layer.width });
+  }
+  function beginCollageResize(event: PointerEvent<HTMLButtonElement>, item: CollageImage) {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedCollageImageId(item.id);
+    setCollageResizeDrag({ id: item.id, x: event.clientX, scale: item.scale });
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -1271,6 +1287,24 @@ function App() {
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
   const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
+  function removeBaseImage() {
+    setUrl("");
+    setOriginalUrl("");
+    setFileName("");
+    setNatural({ width: 0, height: 0 });
+    setSizeSelected(false);
+  }
+  function reorderImageLayer(id: number, target: "top" | "bottom" | "up" | "down") {
+    setImageLayers((current) => {
+      const index = current.findIndex((layer) => layer.id === id);
+      if (index < 0) return current;
+      const next = [...current];
+      const [layer] = next.splice(index, 1);
+      const destination = target === "top" ? next.length : target === "bottom" ? 0 : target === "up" ? Math.min(next.length, index + 1) : Math.max(0, index - 1);
+      next.splice(destination, 0, layer);
+      return next;
+    });
+  }
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
     setDimensionMarkers((current) =>
@@ -1344,6 +1378,7 @@ function App() {
                 <span>
                   {natural.width} × {natural.height}px
                 </span>
+                <button className="remove-base-image" onClick={removeBaseImage} aria-label="Remove main image">×</button>
               </p>
             )}
             <Step
@@ -1486,6 +1521,7 @@ function App() {
                   <div className="layer-controls">
                     <label>Size <input type="range" min="8" max="90" value={selectedImageLayer.width} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, width: Number(event.target.value) } : layer))} /></label>
                     <label>Opacity <input type="range" min="10" max="100" value={selectedImageLayer.opacity} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, opacity: Number(event.target.value) } : layer))} /></label>
+                    <span className="layer-order">Order: <button onClick={() => reorderImageLayer(selectedImageLayer.id, "bottom")}>Bottom</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "down")}>↓</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "up")}>↑</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "top")}>Top</button></span>
                     <button onClick={() => { setImageLayers((current) => current.filter((layer) => layer.id !== selectedImageLayer.id)); setSelectedImageLayerId(null); }}>Delete layer</button>
                   </div>
                 )}
@@ -1496,7 +1532,6 @@ function App() {
                 <div className="collage-templates">
                   {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
                 </div>
-                <button disabled={!selectedCollageTemplate} onClick={() => { setCollageUploadStart(null); collageInput.current?.click(); }}>Upload 2–9 collage images</button>
                 <input ref={collageInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
                 {collageImages.length > 0 && (
                   <div className="layer-list">
@@ -1506,7 +1541,7 @@ function App() {
                 {selectedCollageImage && (
                   <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => { setCollageImages((current) => current.filter((item) => item.id !== selectedCollageImage.id)); setSelectedCollageImageId(null); }}>Remove tile</button></div>
                 )}
-                <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add an image directly, or upload a batch.` : "Choose a collage template to start. Click it again to cancel."}</small>
+                <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Drag ↘ in a selected tile to zoom it.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
             </div>
             <Step
@@ -2078,7 +2113,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -2098,6 +2133,7 @@ function App() {
                 setStickerResizeDrag(null);
                 setLayerDrag(null);
                 setLayerResizeDrag(null);
+                setCollageResizeDrag(null);
                 setMarkerDrag(null);
                 setMarkerResizeDrag(null);
                 setMarkerLabelDrag(null);
@@ -2128,7 +2164,7 @@ function App() {
                   />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages[index];
-                    return <div key={item?.id ?? `empty-${index}`} className={item?.id === selectedCollageImageId ? "collage-tile selected" : item ? "collage-tile" : "collage-tile empty"} onClick={(event) => { event.stopPropagation(); if (item) setSelectedCollageImageId(item.id); else { setCollageUploadStart(index); collageInput.current?.click(); } }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>{item ? <img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} /> : <span>＋</span>}</div>;
+                    return <div key={item?.id ?? `empty-${index}`} className={item?.id === selectedCollageImageId ? "collage-tile selected" : item ? "collage-tile" : "collage-tile empty"} onClick={(event) => { event.stopPropagation(); if (item) setSelectedCollageImageId(item.id); else { setCollageUploadStart(index); collageInput.current?.click(); } }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>{item ? <><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</> : <span>＋</span>}</div>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
