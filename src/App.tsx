@@ -58,7 +58,7 @@ type ImageLayer = {
   width: number;
   opacity: number;
 };
-type CollageImage = { id: number; url: string; name: string; scale: number };
+type CollageImage = { id: number; url: string; name: string; scale: number; position: { x: number; y: number } };
 type Preset = {
   id: string;
   group: string;
@@ -186,10 +186,10 @@ const collageTemplates = [
   { id: "two", label: "2 · Split", slots: [{ x: 0, y: 0, w: 0.5, h: 1 }, { x: 0.5, y: 0, w: 0.5, h: 1 }] },
   { id: "three", label: "3 · Feature", slots: [{ x: 0, y: 0, w: 0.6, h: 1 }, { x: 0.6, y: 0, w: 0.4, h: 0.5 }, { x: 0.6, y: 0.5, w: 0.4, h: 0.5 }] },
   { id: "four", label: "4 · Grid", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.5, h: 0.5 }, { x: 0, y: 0.5, w: 0.5, h: 0.5 }, { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }] },
-  { id: "five", label: "5 · Hero", slots: [{ x: 0, y: 0, w: 0.6, h: 0.6 }, { x: 0.6, y: 0, w: 0.4, h: 0.3 }, { x: 0.6, y: 0.3, w: 0.4, h: 0.3 }, { x: 0, y: 0.6, w: 0.5, h: 0.4 }, { x: 0.5, y: 0.6, w: 0.5, h: 0.4 }] },
+  { id: "five", label: "5 · Photo booth", slots: [{ x: 0.07, y: 0.05, w: 0.4, h: 0.27 }, { x: 0.53, y: 0.05, w: 0.4, h: 0.27 }, { x: 0.07, y: 0.365, w: 0.4, h: 0.27 }, { x: 0.53, y: 0.365, w: 0.4, h: 0.27 }, { x: 0.3, y: 0.68, w: 0.4, h: 0.27 }] },
   { id: "six", label: "6 · Tiles", slots: [{ x: 0, y: 0, w: 1 / 3, h: 0.5 }, { x: 1 / 3, y: 0, w: 1 / 3, h: 0.5 }, { x: 2 / 3, y: 0, w: 1 / 3, h: 0.5 }, { x: 0, y: 0.5, w: 1 / 3, h: 0.5 }, { x: 1 / 3, y: 0.5, w: 1 / 3, h: 0.5 }, { x: 2 / 3, y: 0.5, w: 1 / 3, h: 0.5 }] },
-  { id: "seven", label: "7 · Magazine", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.25, h: 1 / 3 }, { x: 0.75, y: 0, w: 0.25, h: 1 / 3 }, { x: 0, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.25, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.5, y: 1 / 3, w: 0.25, h: 2 / 3 }, { x: 0.75, y: 1 / 3, w: 0.25, h: 2 / 3 }] },
-  { id: "eight", label: "8 · Mosaic", slots: [{ x: 0, y: 0, w: 0.5, h: 0.5 }, { x: 0.5, y: 0, w: 0.25, h: 0.25 }, { x: 0.75, y: 0, w: 0.25, h: 0.25 }, { x: 0.5, y: 0.25, w: 0.25, h: 0.25 }, { x: 0.75, y: 0.25, w: 0.25, h: 0.25 }, { x: 0, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.25, y: 0.5, w: 0.25, h: 0.5 }, { x: 0.5, y: 0.5, w: 0.5, h: 0.5 }] },
+  { id: "seven", label: "7 · Photo booth", slots: [{ x: 0.05, y: 0.04, w: 0.27, h: 0.27 }, { x: 0.365, y: 0.04, w: 0.27, h: 0.27 }, { x: 0.68, y: 0.04, w: 0.27, h: 0.27 }, { x: 0.05, y: 0.365, w: 0.27, h: 0.27 }, { x: 0.365, y: 0.365, w: 0.27, h: 0.27 }, { x: 0.68, y: 0.365, w: 0.27, h: 0.27 }, { x: 0.365, y: 0.69, w: 0.27, h: 0.27 }] },
+  { id: "eight", label: "8 · Photo booth", slots: [{ x: 0.04, y: 0.1, w: 0.215, h: 0.36 }, { x: 0.275, y: 0.1, w: 0.215, h: 0.36 }, { x: 0.51, y: 0.1, w: 0.215, h: 0.36 }, { x: 0.745, y: 0.1, w: 0.215, h: 0.36 }, { x: 0.04, y: 0.54, w: 0.215, h: 0.36 }, { x: 0.275, y: 0.54, w: 0.215, h: 0.36 }, { x: 0.51, y: 0.54, w: 0.215, h: 0.36 }, { x: 0.745, y: 0.54, w: 0.215, h: 0.36 }] },
   { id: "nine", label: "9 · Grid", slots: Array.from({ length: 9 }, (_, index) => ({ x: (index % 3) / 3, y: Math.floor(index / 3) / 3, w: 1 / 3, h: 1 / 3 })) },
 ] as const;
 
@@ -261,6 +261,12 @@ function App() {
     id: number;
     x: number;
     scale: number;
+  } | null>(null);
+  const [collageDrag, setCollageDrag] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    position: CollageImage["position"];
   } | null>(null);
   const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
     [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
@@ -424,7 +430,7 @@ function App() {
     setCollageImages((current) => {
       const next = collageUploadStart === null ? [] : [...current];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
-        next[start + index] = { id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1 };
+        next[start + index] = { id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
       });
       return next;
     });
@@ -544,6 +550,14 @@ function App() {
     if (collageResizeDrag) {
       const scale = Math.min(2.5, Math.max(1, collageResizeDrag.scale + ((event.clientX - collageResizeDrag.x) / box.width) * 2));
       setCollageImages((current) => current.map((item) => item.id === collageResizeDrag.id ? { ...item, scale } : item));
+      return;
+    }
+    if (collageDrag) {
+      const position = {
+        x: Math.min(1, Math.max(0, collageDrag.position.x + (event.clientX - collageDrag.x) / box.width)),
+        y: Math.min(1, Math.max(0, collageDrag.position.y + (event.clientY - collageDrag.y) / box.height)),
+      };
+      setCollageImages((current) => current.map((item) => item.id === collageDrag.id ? { ...item, position } : item));
       return;
     }
     if (stickerResizeDrag) {
@@ -742,6 +756,13 @@ function App() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedCollageImageId(item.id);
     setCollageResizeDrag({ id: item.id, x: event.clientX, scale: item.scale });
+  }
+  function beginCollageDrag(event: PointerEvent<HTMLDivElement>, item: CollageImage) {
+    if (item.scale <= 1) return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedCollageImageId(item.id);
+    setCollageDrag({ id: item.id, x: event.clientX, y: event.clientY, position: item.position });
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -1161,6 +1182,7 @@ function App() {
     width: number,
     height: number,
     scale = 1,
+    position = { x: 0.5, y: 0.5 },
   ) {
     const ratio = Math.max(width / image.naturalWidth, height / image.naturalHeight) * scale;
     const drawWidth = image.naturalWidth * ratio;
@@ -1169,7 +1191,7 @@ function App() {
     ctx.beginPath();
     ctx.rect(x, y, width, height);
     ctx.clip();
-    ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+    ctx.drawImage(image, x + (width - drawWidth) * position.x, y + (height - drawHeight) * position.y, drawWidth, drawHeight);
     ctx.restore();
   }
   async function download() {
@@ -1230,7 +1252,22 @@ function App() {
       const slot = collageTemplate?.slots[collageImages.indexOf(item)];
       if (!slot) continue;
       const collageImage = await loadImage(item.url);
-      drawCoverImage(ctx, collageImage, slot.x * canvas.width, slot.y * canvas.height, slot.w * canvas.width, slot.h * canvas.height, item.scale);
+      const x = slot.x * canvas.width, y = slot.y * canvas.height, width = slot.w * canvas.width, height = slot.h * canvas.height;
+      const isPhotoBooth = ["five", "seven", "eight"].includes(collageTemplate?.id ?? "");
+      if (isPhotoBooth) {
+        const border = Math.max(3, Math.min(width, height) * 0.045);
+        const captionSpace = Math.max(8, height * 0.11);
+        ctx.save();
+        ctx.shadowColor = "rgba(31, 41, 48, 0.12)";
+        ctx.shadowBlur = Math.max(3, border * 1.5);
+        ctx.shadowOffsetY = Math.max(2, border * 0.7);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(x, y, width, height);
+        ctx.restore();
+        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position);
+      } else {
+        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position);
+      }
     }
     for (const layer of imageLayers) {
       const overlay = await loadImage(layer.url);
@@ -2113,7 +2150,7 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag ? "stage is-dragging" : "stage"}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
@@ -2134,6 +2171,7 @@ function App() {
                 setLayerDrag(null);
                 setLayerResizeDrag(null);
                 setCollageResizeDrag(null);
+                setCollageDrag(null);
                 setMarkerDrag(null);
                 setMarkerResizeDrag(null);
                 setMarkerLabelDrag(null);
@@ -2164,7 +2202,8 @@ function App() {
                   />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages[index];
-                    return item ? <div key={item.id} className={item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className="collage-tile empty" onClick={(event) => { event.stopPropagation(); setCollageUploadStart(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
+                    const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); setCollageUploadStart(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
