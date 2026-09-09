@@ -1393,7 +1393,6 @@ function App() {
   const selectedMarker = dimensionMarkers.find(
     (marker) => marker.id === selectedMarkerId,
   );
-  const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
   const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
@@ -1462,10 +1461,6 @@ function App() {
       ),
     );
   }
-  function updateSelectedText(patch: Partial<TextLayer>) {
-    if (selectedTextId === null) return;
-    setTextLayers((current) => current.map((layer) => layer.id === selectedTextId ? { ...layer, ...patch } : layer));
-  }
   function removeTextLayer(id: number) {
     setTextLayers((current) => current.filter((layer) => layer.id !== id));
     setSelectedTextId((current) => current === id ? null : current);
@@ -1481,6 +1476,7 @@ function App() {
           <a href="#tool">Editor</a>
           <a href="#ecommerce">E-commerce tools</a>
           <a href="#how">How it works</a>
+          <a className="feedback-link" href="https://github.com/samzixiao/image-tools-site/issues/new?title=%5BFeedback%5D%20&body=What%20were%20you%20trying%20to%20do%3F%0A%0AWhat%20happened%3F%0A%0AFeature%20idea%20%28optional%29%3A" target="_blank" rel="noreferrer">Feedback & ideas ↗</a>
         </nav>
         <i>● 100% browser-based</i>
       </header>
@@ -1940,68 +1936,7 @@ function App() {
               >
                 ＋ Add text layer
               </button>
-              {selectedText && (
-                <div className="caption-editor">
-                  <input
-                    placeholder="Caption or watermark"
-                    value={selectedText.content}
-                    onChange={(event) => updateSelectedText({ content: event.target.value })}
-                  />
-                  <div>
-                    <label>
-                      Text{" "}
-                      <input type="color" value={selectedText.color} onChange={(event) => updateSelectedText({ color: event.target.value })} />
-                    </label>
-                    <label>
-                      Size{" "}
-                      <input type="number" min="12" max="160" value={selectedText.size} onChange={(event) => updateSelectedText({ size: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      Rotate <input type="range" min="-180" max="180" value={selectedText.rotation} onChange={(event) => updateSelectedText({ rotation: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      Scale <input type="range" min="0.3" max="3" step="0.1" value={selectedText.scale} onChange={(event) => updateSelectedText({ scale: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      Box width <input type="range" min="12" max="92" value={selectedText.boxWidth} onChange={(event) => updateSelectedText({ boxWidth: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      Box height <input type="range" min="6" max="80" value={selectedText.boxHeight} onChange={(event) => updateSelectedText({ boxHeight: Number(event.target.value) })} />
-                    </label>
-                    <label>
-                      Font <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as TextLayer["fontFamily"] })}>
-                        <option value="Inter">Inter</option>
-                        <option value="Roboto">Roboto</option>
-                        <option value="Poppins">Poppins</option>
-                        <option value="Montserrat">Montserrat</option>
-                        <option value="Open Sans">Open Sans</option>
-                        <option value="Playfair Display">Playfair Display Italic · right size</option>
-                      </select>
-                    </label>
-                    <label className="caption-weight-toggle">
-                      <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
-                    </label>
-                    <button
-                      className="caption-remove"
-                      onClick={() => {
-                        setTextLayers((current) => current.filter((layer) => layer.id !== selectedText.id));
-                        setSelectedTextId(null);
-                      }}
-                    >
-                      Delete text
-                    </button>
-                  </div>
-                </div>
-              )}
-              {textLayers.length > 0 && (
-                <div className="caption-list">
-                  {textLayers.map((layer, index) => (
-                    <button key={layer.id} className={layer.id === selectedTextId ? "active" : ""} onClick={() => setSelectedTextId(layer.id)}>
-                      Text {index + 1} · {layer.content || "Empty"}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <small className="caption-direct-edit">Double-click text in the preview to edit it. Drag to move, use ↘ to resize, and × to delete.</small>
               <div>
                 <label>
                   Background{" "}
@@ -2315,7 +2250,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onClick={() => prepareCollageUpload(index)} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
