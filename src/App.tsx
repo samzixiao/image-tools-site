@@ -58,7 +58,7 @@ type ImageLayer = {
   width: number;
   opacity: number;
 };
-type CollageImage = { id: number; url: string; name: string; scale: number; position: { x: number; y: number } };
+type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; position: { x: number; y: number } };
 type Preset = {
   id: string;
   group: string;
@@ -431,9 +431,13 @@ function App() {
     setCollageImages((current) => {
       const next = collageUploadStartRef.current === null ? [] : [...current];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
-        next[start + index] = { id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
+        const slotIndex = start + index;
+        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
+        const existingIndex = next.findIndex((entry) => entry.slotIndex === slotIndex);
+        if (existingIndex >= 0) next[existingIndex] = item;
+        else next.push(item);
       });
-      return next;
+      return next.sort((left, right) => left.slotIndex - right.slotIndex);
     });
     setSelectedCollageImageId(firstId);
     collageUploadStartRef.current = null;
@@ -1261,7 +1265,7 @@ function App() {
     ctx.restore();
     const collageTemplate = collageTemplates.find((template) => template.id === collageTemplateId);
     for (const item of collageImages) {
-      const slot = collageTemplate?.slots[collageImages.indexOf(item)];
+      const slot = collageTemplate?.slots[item.slotIndex];
       if (!slot) continue;
       const collageImage = await loadImage(item.url);
       const x = slot.x * canvas.width, y = slot.y * canvas.height, width = slot.w * canvas.width, height = slot.h * canvas.height;
@@ -1361,8 +1365,9 @@ function App() {
     setSelectedImageLayerId(fallback?.id ?? null);
   }
   function removeCollageImage(id: number) {
-    const index = collageImages.findIndex((item) => item.id === id);
-    const fallback = collageImages[index - 1] ?? collageImages[index + 1];
+    const ordered = [...collageImages].sort((left, right) => left.slotIndex - right.slotIndex);
+    const index = ordered.findIndex((item) => item.id === id);
+    const fallback = ordered[index - 1] ?? ordered[index + 1];
     setCollageImages((current) => current.filter((item) => item.id !== id));
     setSelectedCollageImageId(fallback?.id ?? null);
   }
@@ -1591,12 +1596,12 @@ function App() {
               <div className="layer-section collage-section">
                 <b>Collage board</b>
                 <div className="collage-templates">
-                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
+                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
                 </div>
                 <input id="collage-image-input" className="file-picker-input" ref={collageInput} type="file" accept="image/*" multiple={false} tabIndex={-1} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
                 {collageImages.length > 0 && (
                   <div className="layer-list">
-                    {collageImages.map((item, index) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Tile {index + 1} · {item.name}</button>)}
+                    {collageImages.map((item) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Tile {item.slotIndex + 1} · {item.name}</button>)}
                   </div>
                 )}
                 {selectedCollageImage && (
@@ -1657,7 +1662,7 @@ function App() {
                     className={privacySticker === item ? "active" : ""}
                     onClick={() => {
                       setPrivacySticker(item);
-                      if (url) setPlacingSticker(true);
+                      if (url || selectedCollageTemplate) setPlacingSticker(true);
                     }}
                     title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}
                   >
@@ -2225,7 +2230,7 @@ function App() {
                     }}
                   />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
-                    const item = collageImages[index];
+                    const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
                     return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
                   })}
