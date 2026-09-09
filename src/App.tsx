@@ -36,6 +36,7 @@ type DimensionMarker = {
   labelScale: number;
   labelFlipX: boolean;
   labelFlipY: boolean;
+  labelVisible: boolean;
 };
 type TextLayer = {
   id: number;
@@ -58,7 +59,7 @@ type ImageLayer = {
   width: number;
   opacity: number;
 };
-type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; position: { x: number; y: number }; shape: Exclude<Shape, "polygon"> };
+type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; shapeScale: number; position: { x: number; y: number }; shape: Exclude<Shape, "polygon"> };
 type Preset = {
   id: string;
   group: string;
@@ -205,6 +206,7 @@ function App() {
     [quality, setQuality] = useState(90),
     [mode, setMode] = useState<"crop" | "fit">("crop");
   const [shape, setShape] = useState<Shape>("original"),
+    [shapeScale, setShapeScale] = useState(1),
     [zoom, setZoom] = useState(1),
     [rotation, setRotation] = useState(0),
     [flipX, setFlipX] = useState(false),
@@ -438,7 +440,7 @@ function App() {
       const next = hasTargetSlot ? [...current] : [];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
         const slotIndex = start + index;
-        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 }, shape: "original" as const };
+        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, shapeScale: 1, position: { x: 0.5, y: 0.5 }, shape: "original" as const };
         const existingIndex = next.findIndex((entry) => entry.slotIndex === slotIndex);
         if (existingIndex >= 0) next[existingIndex] = item;
         else next.push(item);
@@ -794,6 +796,7 @@ function App() {
   }
   function beginCollageDrag(event: PointerEvent<HTMLDivElement>, item: CollageImage) {
     if (placingSticker && privacySticker) return;
+    event.preventDefault();
     event.stopPropagation();
     previewSelectionPress.current = {
       kind: "collage",
@@ -887,6 +890,7 @@ function App() {
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
     setShape("original");
+    setShapeScale(1);
     setSizeSelected(false);
     setAdjust({
       brightness: 100,
@@ -1054,6 +1058,18 @@ function App() {
       else ctx.lineTo(x, y);
     }
     ctx.closePath();
+  }
+  function scaledPath(ctx: CanvasRenderingContext2D, width: number, height: number, nextShape: Shape, nextScale: number) {
+    if (nextScale === 1) {
+      path(ctx, width, height, nextShape);
+      return;
+    }
+    ctx.save();
+    ctx.translate(width / 2, height / 2);
+    ctx.scale(nextScale, nextScale);
+    ctx.translate(-width / 2, -height / 2);
+    path(ctx, width, height, nextShape);
+    ctx.restore();
   }
   function drawMosaic(
     ctx: CanvasRenderingContext2D,
@@ -1265,24 +1281,30 @@ function App() {
     scale = 1,
     position = { x: 0.5, y: 0.5 },
     imageShape: CollageImage["shape"] = "original",
+    imageShapeScale = 1,
   ) {
-    const ratio = Math.min(width / image.naturalWidth, height / image.naturalHeight) * scale;
+    const shapeSize = imageShape === "original" ? 0 : Math.min(width, height) * imageShapeScale;
+    const targetX = imageShape === "original" ? x : x + (width - shapeSize) / 2;
+    const targetY = imageShape === "original" ? y : y + (height - shapeSize) / 2;
+    const targetWidth = imageShape === "original" ? width : shapeSize;
+    const targetHeight = imageShape === "original" ? height : shapeSize;
+    const ratio = Math.min(targetWidth / image.naturalWidth, targetHeight / image.naturalHeight) * scale;
     const drawWidth = image.naturalWidth * ratio;
     const drawHeight = image.naturalHeight * ratio;
     ctx.save();
-    ctx.translate(x, y);
+    ctx.translate(targetX, targetY);
     if (imageShape === "original") {
       ctx.beginPath();
-      ctx.rect(0, 0, width, height);
+      ctx.rect(0, 0, targetWidth, targetHeight);
     } else {
       const shapeInset = ["circle", "hexagon", "badge"].includes(imageShape) ? 0.06 : 0;
       ctx.save();
-      ctx.translate(width * shapeInset, height * shapeInset);
-      path(ctx, width * (1 - shapeInset * 2), height * (1 - shapeInset * 2), imageShape);
+      ctx.translate(targetWidth * shapeInset, targetHeight * shapeInset);
+      path(ctx, targetWidth * (1 - shapeInset * 2), targetHeight * (1 - shapeInset * 2), imageShape);
       ctx.restore();
     }
     ctx.clip();
-    ctx.drawImage(image, (width - drawWidth) * position.x, (height - drawHeight) * position.y, drawWidth, drawHeight);
+    ctx.drawImage(image, (targetWidth - drawWidth) * position.x, (targetHeight - drawHeight) * position.y, drawWidth, drawHeight);
     ctx.restore();
   }
   async function download() {
@@ -1298,7 +1320,7 @@ function App() {
     }
     if (shape !== "original") {
       ctx.save();
-      path(ctx, canvas.width, canvas.height);
+      scaledPath(ctx, canvas.width, canvas.height, shape, shapeScale);
       ctx.clip();
     }
     if (image) {
@@ -1341,9 +1363,9 @@ function App() {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(x, y, width, height);
         ctx.restore();
-        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position, item.shape);
+        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position, item.shape, item.shapeScale);
       } else {
-        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position, item.shape);
+        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position, item.shape, item.shapeScale);
       }
     }
     for (const layer of imageLayers) {
@@ -1362,7 +1384,7 @@ function App() {
       ctx.save();
       ctx.strokeStyle = borderColor;
       ctx.lineWidth = Math.max(1, (canvas.width * borderWidth) / 1080);
-      if (shape !== "original") path(ctx, canvas.width, canvas.height);
+      if (shape !== "original") scaledPath(ctx, canvas.width, canvas.height, shape, shapeScale);
       else
         ctx.rect(
           ctx.lineWidth / 2,
@@ -1419,6 +1441,16 @@ function App() {
       return;
     }
     setZoom(1);
+  }
+  const activeShapeScale = selectedCollageImage?.shapeScale ?? shapeScale;
+  const canAdjustActiveShape = selectedCollageImage ? selectedCollageImage.shape !== "original" : shape !== "original";
+  function setActiveShapeScale(next: number) {
+    const value = Math.min(1, Math.max(0.35, next));
+    if (selectedCollageImage) {
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shapeScale: value } : item));
+      return;
+    }
+    setShapeScale(value);
   }
   function removeBaseImage() {
     setUrl("");
@@ -2064,6 +2096,7 @@ function App() {
                       labelScale: 1,
                       labelFlipX: false,
                       labelFlipY: false,
+                      labelVisible: true,
                     },
                   ]);
                   setSelectedMarkerId(id);
@@ -2145,6 +2178,9 @@ function App() {
                   <div className="measure-label-controls">
                     <b>Dimension text</b>
                     <label>
+                      <input type="checkbox" checked={selectedMarker.labelVisible} onChange={(event) => updateSelectedMarker({ labelVisible: event.target.checked })} /> Show text
+                    </label>
+                    <label>
                       Text rotate <b>{Math.round(selectedMarker.labelRotation)}°</b>
                       <input type="range" min="-180" max="180" value={selectedMarker.labelRotation} onChange={(event) => updateSelectedMarker({ labelRotation: Number(event.target.value) })} />
                     </label>
@@ -2156,7 +2192,7 @@ function App() {
                       <button className={selectedMarker.labelFlipX ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipX: !selectedMarker.labelFlipX })}>Flip text H</button>
                       <button className={selectedMarker.labelFlipY ? "active" : ""} onClick={() => updateSelectedMarker({ labelFlipY: !selectedMarker.labelFlipY })}>Flip text V</button>
                     </div>
-                    <small>Drag the dimension text itself in the preview to move it separately.</small>
+                    <small>Drag the dimension text itself in the preview to move it separately. Its × only removes the text, not the arrow.</small>
                   </div>
                   <button
                     className="measure-remove"
@@ -2223,6 +2259,8 @@ function App() {
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
+                transform: shape !== "original" && !selectedCollageImage ? `scale(${shapeScale})` : undefined,
+                transformOrigin: "center center",
                 clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                 backgroundColor: transparentBackground ? undefined : background,
                 backgroundImage:
@@ -2273,7 +2311,9 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    const tileAspect = Math.min(slot.w / slot.h, slot.h / slot.w);
+                    const shapeBoxScale = !item || item.shape === "original" ? 1 : tileAspect * item.shapeScale;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={{ width: `${shapeBoxScale * 100}%`, height: `${shapeBoxScale * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2373,7 +2413,7 @@ function App() {
                           </>
                         )}
                       </div>
-                      <div
+                      {marker.labelVisible && <div
                         className={marker.id === selectedMarkerId ? "measure-label selected editable" : "measure-label editable"}
                         onPointerDown={(event) => beginMarkerLabelDrag(event, marker)}
                         onClick={(event) => { event.stopPropagation(); setSelectedMarkerId(marker.id); }}
@@ -2385,7 +2425,9 @@ function App() {
                         }}
                       >
                         {dimensionLabel(marker)}
+                        {marker.id === selectedMarkerId && <button className="measure-label-delete-handle" aria-label="Delete dimension text" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); updateSelectedMarker({ labelVisible: false }); }} onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}>×</button>}
                       </div>
+                      }
                     </div>
                   ))}
                   {textLayers.map((layer) => (
@@ -2442,10 +2484,14 @@ function App() {
                           <button
                             className="caption-delete-handle"
                             aria-label="Delete text layer"
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
+                            onPointerDown={(event) => {
+                              event.preventDefault();
                               event.stopPropagation();
                               removeTextLayer(layer.id);
+                            }}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
                             }}
                           >×</button>
                         </>
@@ -2545,6 +2591,15 @@ function App() {
                 Center image
               </button>
             </div>
+            {(shape !== "original" || selectedCollageImage?.shape !== "original") && (
+              <div className="preview-shape-tools" aria-label="Shape scale controls">
+                <b>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} shape` : "Shape"} scale</b>
+                <button onClick={() => setActiveShapeScale(activeShapeScale - 0.05)} disabled={!canAdjustActiveShape}>−</button>
+                <input type="range" min="0.35" max="1" step="0.05" value={activeShapeScale} onChange={(event) => setActiveShapeScale(Number(event.target.value))} disabled={!canAdjustActiveShape} aria-label="Shape scale" />
+                <button onClick={() => setActiveShapeScale(activeShapeScale + 0.05)} disabled={!canAdjustActiveShape}>＋</button>
+                <button onClick={() => setActiveShapeScale(1)} disabled={!canAdjustActiveShape}>{Math.round(activeShapeScale * 100)}%</button>
+              </div>
+            )}
             <div className="preview-transform" aria-label="Preview controls">
               <div>
                 <button
