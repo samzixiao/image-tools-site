@@ -244,8 +244,9 @@ function App() {
     [collageImages, setCollageImages] = useState<CollageImage[]>([]),
     [selectedCollageImageId, setSelectedCollageImageId] = useState<number | null>(null),
     [collageTemplateId, setCollageTemplateId] = useState<string | null>(null),
-    [collageUploadStart, setCollageUploadStart] = useState<number | null>(null),
+    [, setCollageUploadStart] = useState<number | null>(null),
     [backgroundTolerance, setBackgroundTolerance] = useState(35);
+  const collageUploadStartRef = useRef<number | null>(null);
   const [layerDrag, setLayerDrag] = useState<{
     id: number;
     x: number;
@@ -426,16 +427,21 @@ function App() {
     const template = collageTemplates.find((item) => item.id === collageTemplateId);
     if (!images.length || !template) return;
     const firstId = Date.now();
-    const start = collageUploadStart ?? 0;
+    const start = collageUploadStartRef.current ?? 0;
     setCollageImages((current) => {
-      const next = collageUploadStart === null ? [] : [...current];
+      const next = collageUploadStartRef.current === null ? [] : [...current];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
         next[start + index] = { id: firstId + index, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
       });
       return next;
     });
     setSelectedCollageImageId(firstId);
+    collageUploadStartRef.current = null;
     setCollageUploadStart(null);
+  }
+  function prepareCollageUpload(index: number) {
+    collageUploadStartRef.current = index;
+    setCollageUploadStart(index);
   }
   function choosePreset(next: Preset) {
     setPreset(next);
@@ -446,7 +452,7 @@ function App() {
       setCustom({ width: next.width, height: next.height });
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (!url) return;
+    if (!url && !collageTemplateId) return;
     if (placingSticker && privacySticker) {
       const box = event.currentTarget.getBoundingClientRect();
       const id = Date.now();
@@ -466,6 +472,7 @@ function App() {
       setPlacingSticker(false);
       return;
     }
+    if (!url) return;
     if (addingPolygonPoint && shape === "polygon") {
       const box = event.currentTarget.getBoundingClientRect();
       setPolygonPoints((current) =>
@@ -758,8 +765,12 @@ function App() {
     setCollageResizeDrag({ id: item.id, x: event.clientX, scale: item.scale });
   }
   function beginCollageDrag(event: PointerEvent<HTMLDivElement>, item: CollageImage) {
-    if (item.scale <= 1) return;
+    if (placingSticker && privacySticker) return;
     event.stopPropagation();
+    if (item.scale <= 1) {
+      setSelectedCollageImageId(item.id);
+      return;
+    }
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedCollageImageId(item.id);
     setCollageDrag({ id: item.id, x: event.clientX, y: event.clientY, position: item.position });
@@ -828,6 +839,7 @@ function App() {
     setCollageImages([]);
     setSelectedCollageImageId(null);
     setCollageTemplateId(null);
+    collageUploadStartRef.current = null;
     setCollageUploadStart(null);
     setExpandMode("none");
     setPrivacySticker("");
@@ -1184,7 +1196,7 @@ function App() {
     scale = 1,
     position = { x: 0.5, y: 0.5 },
   ) {
-    const ratio = Math.max(width / image.naturalWidth, height / image.naturalHeight) * scale;
+    const ratio = Math.min(width / image.naturalWidth, height / image.naturalHeight) * scale;
     const drawWidth = image.naturalWidth * ratio;
     const drawHeight = image.naturalHeight * ratio;
     ctx.save();
@@ -1341,6 +1353,18 @@ function App() {
       next.splice(destination, 0, layer);
       return next;
     });
+  }
+  function removeImageLayer(id: number) {
+    const index = imageLayers.findIndex((layer) => layer.id === id);
+    const fallback = imageLayers[index - 1] ?? imageLayers[index + 1];
+    setImageLayers((current) => current.filter((layer) => layer.id !== id));
+    setSelectedImageLayerId(fallback?.id ?? null);
+  }
+  function removeCollageImage(id: number) {
+    const index = collageImages.findIndex((item) => item.id === id);
+    const fallback = collageImages[index - 1] ?? collageImages[index + 1];
+    setCollageImages((current) => current.filter((item) => item.id !== id));
+    setSelectedCollageImageId(fallback?.id ?? null);
   }
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
@@ -1559,7 +1583,7 @@ function App() {
                     <label>Size <input type="range" min="8" max="90" value={selectedImageLayer.width} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, width: Number(event.target.value) } : layer))} /></label>
                     <label>Opacity <input type="range" min="10" max="100" value={selectedImageLayer.opacity} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, opacity: Number(event.target.value) } : layer))} /></label>
                     <span className="layer-order">Order: <button onClick={() => reorderImageLayer(selectedImageLayer.id, "bottom")}>Bottom</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "down")}>↓</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "up")}>↑</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "top")}>Top</button></span>
-                    <button onClick={() => { setImageLayers((current) => current.filter((layer) => layer.id !== selectedImageLayer.id)); setSelectedImageLayerId(null); }}>Delete layer</button>
+                    <button onClick={() => removeImageLayer(selectedImageLayer.id)}>Delete layer</button>
                   </div>
                 )}
                 <small>Add as many images as needed. Drag a layer directly in the preview to reposition it.</small>
@@ -1567,7 +1591,7 @@ function App() {
               <div className="layer-section collage-section">
                 <b>Collage board</b>
                 <div className="collage-templates">
-                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
+                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.slice(0, template.slots.length)); }}>{template.label}</button>)}
                 </div>
                 <input id="collage-image-input" className="file-picker-input" ref={collageInput} type="file" accept="image/*" multiple={false} tabIndex={-1} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
                 {collageImages.length > 0 && (
@@ -1576,7 +1600,7 @@ function App() {
                   </div>
                 )}
                 {selectedCollageImage && (
-                  <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => { setCollageImages((current) => current.filter((item) => item.id !== selectedCollageImage.id)); setSelectedCollageImageId(null); }}>Remove tile</button></div>
+                  <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button></div>
                 )}
                 <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Drag ↘ in a selected tile to zoom it.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
@@ -1662,7 +1686,7 @@ function App() {
                   }}
                 />
               </label>
-              <button onClick={() => privacyInput.current?.click()} disabled={!url}>
+              <button onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate}>
                 Add custom sticker
               </button>
               <input
@@ -1680,7 +1704,7 @@ function App() {
               />
               <button
                 className={placingSticker ? "place active" : "place"}
-                disabled={!privacySticker || !url}
+                disabled={!privacySticker || (!url && !selectedCollageTemplate)}
                 onClick={() => setPlacingSticker(true)}
               >
                 {placingSticker ? "Click the image…" : "Place on image"}
@@ -2203,7 +2227,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages[index];
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); setCollageUploadStart(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
