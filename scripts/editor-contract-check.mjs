@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
 for (const contract of [
   'shape: Exclude<Shape, "polygon">',
@@ -10,6 +11,7 @@ for (const contract of [
   'aria-label={`Upload image to collage tile ${index + 1}`}',
   'disabled={!url && !selectedCollageTemplate}',
   'value="Playfair Display"',
+  'fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal"',
   'function removePrivacyCover(id: number)',
   'const fallback = privacyCovers[index - 1] ?? privacyCovers[index + 1];',
   'aria-label="Delete privacy cover"',
@@ -18,5 +20,7 @@ for (const contract of [
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
+
+assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
 
 console.log("Editor collage and overlay contracts passed.");

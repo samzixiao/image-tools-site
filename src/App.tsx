@@ -1160,7 +1160,7 @@ function App() {
     ctx.translate(layer.position.x * width, layer.position.y * height);
     ctx.rotate((layer.rotation * Math.PI) / 180);
     ctx.scale(layer.scale, layer.scale);
-    ctx.font = `${layer.bold ? 700 : 400} ${size}px "${layer.fontFamily}", Arial, sans-serif`;
+    ctx.font = `${layer.fontFamily === "Playfair Display" ? "italic " : ""}${layer.bold ? 700 : 400} ${size}px "${layer.fontFamily}", Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = layer.color;
@@ -1367,6 +1367,7 @@ function App() {
       ctx.stroke();
       ctx.restore();
     }
+    if (document.fonts) await document.fonts.load('italic 400 48px "Playfair Display"');
     textLayers.forEach((layer) => drawTextLayer(ctx, canvas.width, canvas.height, layer));
     dimensionMarkers.forEach((marker) =>
       drawDimensionMarker(ctx, canvas.width, canvas.height, marker),
@@ -1974,7 +1975,7 @@ function App() {
                         <option value="Poppins">Poppins</option>
                         <option value="Montserrat">Montserrat</option>
                         <option value="Open Sans">Open Sans</option>
-                        <option value="Playfair Display">Playfair Display · right size</option>
+                        <option value="Playfair Display">Playfair Display Italic · right size</option>
                       </select>
                     </label>
                     <label className="caption-weight-toggle">
@@ -2450,6 +2451,7 @@ function App() {
                         transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scale})`,
                         fontFamily: `"${layer.fontFamily}", Arial, sans-serif`,
                         fontWeight: layer.bold ? 700 : 400,
+                        fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal",
                         textShadow: "none",
                       }}
                     >
