@@ -293,7 +293,7 @@ function App() {
   const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
     [expandStrength, setExpandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
-    [stickerSize, setStickerSize] = useState(30),
+    [stickerSize, setStickerSize] = useState(16),
     [placingSticker, setPlacingSticker] = useState(false);
   const [privacyCovers, setPrivacyCovers] = useState<PrivacyCover[]>([]),
     [selectedCoverId, setSelectedCoverId] = useState<number | null>(null);
@@ -577,7 +577,7 @@ function App() {
       return;
     }
     if (stickerResizeDrag) {
-      const size = Math.min(70, Math.max(12, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
+      const size = Math.min(70, Math.max(4, stickerResizeDrag.size + ((event.clientX - stickerResizeDrag.x) / box.width) * 100));
       setStickerSize(size);
       setPrivacyCovers((current) =>
         current.map((cover) =>
@@ -1005,7 +1005,7 @@ function App() {
     height: number,
     cover: PrivacyCover,
   ) {
-    const size = Math.max(36, (width * cover.size) / 100),
+    const size = Math.max(8, (width * cover.size) / 100),
       centerX = cover.position.x * width,
       centerY = cover.position.y * height,
       left = Math.max(0, Math.round(centerX - size / 2)),
@@ -1168,7 +1168,7 @@ function App() {
     cover: PrivacyCover,
   ) {
     ctx.save();
-    const size = Math.max(28, (width * cover.size) / 100);
+    const size = Math.max(8, (width * cover.size) / 100);
     if (cover.kind.startsWith("blob:")) {
       const sticker = await loadImage(cover.kind);
       ctx.drawImage(
@@ -1683,7 +1683,7 @@ function App() {
                 Size{" "}
                 <input
                   type="range"
-                  min="12"
+                  min="4"
                   max="70"
                   value={stickerSize}
                   onChange={(event) => {
