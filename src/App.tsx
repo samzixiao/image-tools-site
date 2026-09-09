@@ -428,8 +428,9 @@ function App() {
     if (!images.length || !template) return;
     const firstId = Date.now();
     const start = collageUploadStartRef.current ?? 0;
+    const hasTargetSlot = collageUploadStartRef.current !== null;
     setCollageImages((current) => {
-      const next = collageUploadStartRef.current === null ? [] : [...current];
+      const next = hasTargetSlot ? [...current] : [];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
         const slotIndex = start + index;
         const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
@@ -564,6 +565,10 @@ function App() {
       return;
     }
     if (collageDrag) {
+      if ((event.buttons & 1) === 0) {
+        setCollageDrag(null);
+        return;
+      }
       const position = {
         x: Math.min(1, Math.max(0, collageDrag.position.x + (event.clientX - collageDrag.x) / box.width)),
         y: Math.min(1, Math.max(0, collageDrag.position.y + (event.clientY - collageDrag.y) / box.height)),
@@ -778,6 +783,10 @@ function App() {
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedCollageImageId(item.id);
     setCollageDrag({ id: item.id, x: event.clientX, y: event.clientY, position: item.position });
+  }
+  function endCollageInteraction() {
+    setCollageDrag(null);
+    setCollageResizeDrag(null);
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -2232,7 +2241,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
