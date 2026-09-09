@@ -1069,13 +1069,13 @@ footer {
   background: #e8ebe7;
 }
 .collage-tile.selected { outline: 2px solid #e77967; outline-offset: -2px; }
-.collage-tile.circle { clip-path: circle(50% at 50% 50%); }
+.collage-tile.circle { clip-path: circle(44% at 50% 50%); }
 .collage-tile.ellipse { clip-path: ellipse(48% 34% at 50% 50%); }
 .collage-tile.star { clip-path: polygon(50% 2%, 61% 35%, 98% 35%, 68% 56%, 79% 92%, 50% 70%, 21% 92%, 32% 56%, 2% 35%, 39% 35%); }
-.collage-tile.hexagon { clip-path: polygon(50% 2%, 92% 25%, 92% 75%, 50% 98%, 8% 75%, 8% 25%); }
+.collage-tile.hexagon { clip-path: polygon(50% 8%, 86% 28%, 86% 72%, 50% 92%, 14% 72%, 14% 28%); }
 .collage-tile.triangle { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .collage-tile.sticker { clip-path: inset(0 round 9%); }
-.collage-tile.badge { clip-path: polygon(50% 0, 58% 12%, 70% 4%, 72% 18%, 86% 15%, 82% 29%, 96% 34%, 84% 43%, 99% 50%, 84% 57%, 96% 66%, 82% 71%, 86% 85%, 72% 82%, 70% 96%, 58% 88%, 50% 100%, 42% 88%, 30% 96%, 28% 82%, 14% 85%, 18% 71%, 4% 66%, 16% 57%, 1% 50%, 16% 43%, 4% 34%, 18% 29%, 14% 15%, 28% 18%, 30% 4%, 42% 12%); }
+.collage-tile.badge { clip-path: polygon(50% 6%, 57% 16%, 67% 10%, 69% 22%, 81% 20%, 77% 32%, 90% 37%, 79% 45%, 94% 50%, 79% 55%, 90% 63%, 77% 68%, 81% 80%, 69% 78%, 67% 90%, 57% 84%, 50% 94%, 43% 84%, 33% 90%, 31% 78%, 19% 80%, 23% 68%, 10% 63%, 21% 55%, 6% 50%, 21% 45%, 10% 37%, 23% 32%, 19% 20%, 31% 22%, 33% 10%, 43% 16%); }
 .collage-tile.heart {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
@@ -1131,6 +1131,8 @@ footer {
   cursor: pointer;
   opacity: 0;
 }
+.stage-upload { position: relative; cursor: pointer; }
+.stage-upload-input { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; margin: 0; cursor: pointer; opacity: 0; }
 .collage-tile.empty > span { pointer-events: none; }
 .layers-panel {
   margin: 10px 0 0 26px;

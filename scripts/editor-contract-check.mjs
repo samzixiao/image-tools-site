@@ -9,7 +9,11 @@ for (const contract of [
   'shape: "original" as const',
   'className="collage-slot-input"',
   'aria-label={`Upload image to collage tile ${index + 1}`}',
-  'onPointerDown={(event) => event.stopPropagation()}',
+  'prepareCollageUpload(index);',
+  'const activePreviewZoom = selectedCollageImage?.scale ?? zoom;',
+  'aria-label={selectedCollageImage ? "Selected collage tile zoom level" : "Preview zoom level"}',
+  'aria-label="Upload main image in preview"',
+  'const shapeInset = ["circle", "hexagon", "badge"].includes(imageShape) ? 0.06 : 0;',
   'disabled={!url && !selectedCollageTemplate}',
   'fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal"',
   'Double-click text in the preview to edit it',
@@ -22,6 +26,8 @@ for (const contract of [
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
+
+assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
 

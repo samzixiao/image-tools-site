@@ -1274,7 +1274,13 @@ function App() {
     if (imageShape === "original") {
       ctx.beginPath();
       ctx.rect(0, 0, width, height);
-    } else path(ctx, width, height, imageShape);
+    } else {
+      const shapeInset = ["circle", "hexagon", "badge"].includes(imageShape) ? 0.06 : 0;
+      ctx.save();
+      ctx.translate(width * shapeInset, height * shapeInset);
+      path(ctx, width * (1 - shapeInset * 2), height * (1 - shapeInset * 2), imageShape);
+      ctx.restore();
+    }
     ctx.clip();
     ctx.drawImage(image, (width - drawWidth) * position.x, (height - drawHeight) * position.y, drawWidth, drawHeight);
     ctx.restore();
@@ -1396,6 +1402,24 @@ function App() {
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
   const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
+  const activePreviewZoom = selectedCollageImage?.scale ?? zoom;
+  const activePreviewZoomMinimum = selectedCollageImage ? 1 : 0.5;
+  const activePreviewZoomMaximum = selectedCollageImage ? 2.5 : 2;
+  function setActivePreviewZoom(next: number) {
+    const value = Math.min(activePreviewZoomMaximum, Math.max(activePreviewZoomMinimum, next));
+    if (selectedCollageImage) {
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: value } : item));
+      return;
+    }
+    setZoom(value);
+  }
+  function resetActivePreviewZoom() {
+    if (selectedCollageImage) {
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: 1, position: { x: 0.5, y: 0.5 } } : item));
+      return;
+    }
+    setZoom(1);
+  }
   function removeBaseImage() {
     setUrl("");
     setOriginalUrl("");
@@ -1684,7 +1708,6 @@ function App() {
                 )}
                 {selectedCollageImage && (
                   <div className="layer-controls">
-                    <label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label>
                     <label>Tile shape
                       <select value={selectedCollageImage.shape} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: event.target.value as CollageImage["shape"] } : item))}>
                         {shapes.filter((item): item is CollageImage["shape"] => item !== "polygon").map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
@@ -1693,7 +1716,7 @@ function App() {
                     <button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button>
                   </div>
                 )}
-                <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Drag ↘ in a selected tile to zoom it.` : "Choose a collage template to start. Click it again to cancel."}</small>
+                <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
             </div>
             <Step
@@ -2250,7 +2273,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2486,27 +2509,28 @@ function App() {
                   )}
                 </>
               ) : (
-                <div className="empty">
+                <label className="empty stage-upload" onPointerDown={(event) => event.stopPropagation()}>
+                  <input className="stage-upload-input" type="file" accept="image/*" aria-label="Upload main image in preview" onPointerDown={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
                   <b>▧</b>
-                  <strong>Your preview appears here</strong>
-                  <small>Upload an image to get started</small>
-                </div>
+                  <strong>Click here to upload your main image</strong>
+                  <small>Or use the upload button in the left panel</small>
+                </label>
               )}
             </div>
             <div className="preview-canvas-tools" aria-label="Canvas controls">
-              <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} disabled={!url}>−</button>
+              <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
               <input
                 type="range"
-                min=".5"
-                max="2"
+                min={activePreviewZoomMinimum}
+                max={activePreviewZoomMaximum}
                 step=".05"
-                value={zoom}
-                onChange={(event) => setZoom(Number(event.target.value))}
-                disabled={!url}
-                aria-label="Preview zoom level"
+                value={activePreviewZoom}
+                onChange={(event) => setActivePreviewZoom(Number(event.target.value))}
+                disabled={!url && !selectedCollageImage}
+                aria-label={selectedCollageImage ? "Selected collage tile zoom level" : "Preview zoom level"}
               />
-              <button onClick={() => setZoom(Math.min(2, zoom + 0.1))} disabled={!url}>＋</button>
-              <button onClick={() => setZoom(1)} disabled={!url}>{Math.round(zoom * 100)}%</button>
+              <button onClick={() => setActivePreviewZoom(activePreviewZoom + 0.1)} disabled={!url && !selectedCollageImage}>＋</button>
+              <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
               <span></span>
               <button
                 onClick={resetEdits}
