@@ -891,9 +891,14 @@ function App() {
   }
   function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
     if (editingTextId === layer.id) return;
+    event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedTextId(layer.id);
+    setSelectedCollageImageId(null);
+    setSelectedImageLayerId(null);
+    setSelectedCoverId(null);
+    setSelectedMarkerId(null);
     setTextDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
   }
   function beginTextResize(event: PointerEvent<HTMLButtonElement>, layer: TextLayer) {
@@ -1538,6 +1543,8 @@ function App() {
     );
   }
   function removeTextLayer(id: number) {
+    setTextDrag(null);
+    setTextResizeDrag(null);
     setTextLayers((current) => current.filter((layer) => layer.id !== id));
     setSelectedTextId((current) => current === id ? null : current);
     setEditingTextId((current) => current === id ? null : current);

@@ -36,6 +36,9 @@ for (const contract of [
 
 assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
+assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
+assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*none;/.test(styles), "Empty collage tiles must not cover text interactions");
+assert.ok(/\.collage-slot-input\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The central collage upload control must remain clickable");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
 
