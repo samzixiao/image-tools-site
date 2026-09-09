@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChangeEvent, PointerEvent } from "react";
+import type { ChangeEvent, CSSProperties, PointerEvent } from "react";
 import "./App.css";
 
 type Format = "image/jpeg" | "image/png" | "image/webp";
@@ -158,6 +158,30 @@ const shapeSymbol: Record<Shape, string> = {
   sticker: "▣",
   polygon: "⬠",
 };
+
+type CollageSlot = { x: number; y: number; w: number; h: number };
+
+function collageShapeStyle(shape: CollageImage["shape"], slot: CollageSlot, scale: number): CSSProperties {
+  if (shape === "original") return {};
+  const squareWidth = Math.min(1, slot.h / slot.w) * scale;
+  const squareHeight = Math.min(1, slot.w / slot.h) * scale;
+  const x = (value: number) => 50 + (value - 50) * squareWidth;
+  const y = (value: number) => 50 + (value - 50) * squareHeight;
+  const polygon = (points: Array<[number, number]>) => `polygon(${points.map(([px, py]) => `${x(px)}% ${y(py)}%`).join(", ")})`;
+  if (shape === "circle") return { clipPath: `ellipse(${50 * squareWidth}% ${50 * squareHeight}% at 50% 50%)` };
+  if (shape === "ellipse") return { clipPath: `ellipse(${48 * squareWidth}% ${34 * squareHeight}% at 50% 50%)` };
+  if (shape === "heart") {
+    const heartMask = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E\")";
+    return { WebkitMaskImage: heartMask, maskImage: heartMask, WebkitMaskSize: `${squareWidth * 100}% ${squareHeight * 100}%`, maskSize: `${squareWidth * 100}% ${squareHeight * 100}%`, WebkitMaskPosition: "center", maskPosition: "center", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" };
+  }
+  if (shape === "star") return { clipPath: polygon([[50, 2], [61, 35], [98, 35], [68, 56], [79, 92], [50, 70], [21, 92], [32, 56], [2, 35], [39, 35]]) };
+  if (shape === "hexagon") return { clipPath: polygon([[50, 4], [90, 27], [90, 73], [50, 96], [10, 73], [10, 27]]) };
+  if (shape === "triangle") return { clipPath: polygon([[50, 2], [98, 98], [2, 98]]) };
+  if (shape === "badge") return { clipPath: polygon([[50, 4], [58, 15], [70, 8], [72, 21], [85, 18], [81, 31], [94, 36], [82, 44], [97, 50], [82, 56], [94, 64], [81, 69], [85, 82], [72, 79], [70, 92], [58, 85], [50, 96], [42, 85], [30, 92], [28, 79], [15, 82], [19, 69], [6, 64], [18, 56], [3, 50], [18, 44], [6, 36], [19, 31], [15, 18], [28, 21], [30, 8], [42, 15]]) };
+  const insetX = Math.max(0, (1 - squareWidth) * 50);
+  const insetY = Math.max(0, (1 - squareHeight) * 50);
+  return { clipPath: `inset(${insetY}% ${insetX}% round 9%)` };
+}
 const privacyStickers = [
   "mosaic",
   "🕶️",
@@ -1288,7 +1312,7 @@ function App() {
     const targetY = imageShape === "original" ? y : y + (height - shapeSize) / 2;
     const targetWidth = imageShape === "original" ? width : shapeSize;
     const targetHeight = imageShape === "original" ? height : shapeSize;
-    const ratio = Math.min(targetWidth / image.naturalWidth, targetHeight / image.naturalHeight) * scale;
+    const ratio = Math.min(width / image.naturalWidth, height / image.naturalHeight) * scale;
     const drawWidth = image.naturalWidth * ratio;
     const drawHeight = image.naturalHeight * ratio;
     ctx.save();
@@ -1297,14 +1321,10 @@ function App() {
       ctx.beginPath();
       ctx.rect(0, 0, targetWidth, targetHeight);
     } else {
-      const shapeInset = ["circle", "hexagon", "badge"].includes(imageShape) ? 0.06 : 0;
-      ctx.save();
-      ctx.translate(targetWidth * shapeInset, targetHeight * shapeInset);
-      path(ctx, targetWidth * (1 - shapeInset * 2), targetHeight * (1 - shapeInset * 2), imageShape);
-      ctx.restore();
+      path(ctx, targetWidth, targetHeight, imageShape);
     }
     ctx.clip();
-    ctx.drawImage(image, (targetWidth - drawWidth) * position.x, (targetHeight - drawHeight) * position.y, drawWidth, drawHeight);
+    ctx.drawImage(image, (width - drawWidth) * position.x - (targetX - x), (height - drawHeight) * position.y - (targetY - y), drawWidth, drawHeight);
     ctx.restore();
   }
   async function download() {
@@ -1445,7 +1465,7 @@ function App() {
   const activeShapeScale = selectedCollageImage?.shapeScale ?? shapeScale;
   const canAdjustActiveShape = selectedCollageImage ? selectedCollageImage.shape !== "original" : shape !== "original";
   function setActiveShapeScale(next: number) {
-    const value = Math.min(1, Math.max(0.35, next));
+    const value = Math.min(1.5, Math.max(0.35, next));
     if (selectedCollageImage) {
       setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shapeScale: value } : item));
       return;
@@ -2311,9 +2331,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    const tileAspect = Math.min(slot.w / slot.h, slot.h / slot.w);
-                    const shapeBoxScale = !item || item.shape === "original" ? 1 : tileAspect * item.shapeScale;
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={{ width: `${shapeBoxScale * 100}%`, height: `${shapeBoxScale * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2591,11 +2609,11 @@ function App() {
                 Center image
               </button>
             </div>
-            {(shape !== "original" || selectedCollageImage?.shape !== "original") && (
+            {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
               <div className="preview-shape-tools" aria-label="Shape scale controls">
                 <b>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} shape` : "Shape"} scale</b>
                 <button onClick={() => setActiveShapeScale(activeShapeScale - 0.05)} disabled={!canAdjustActiveShape}>−</button>
-                <input type="range" min="0.35" max="1" step="0.05" value={activeShapeScale} onChange={(event) => setActiveShapeScale(Number(event.target.value))} disabled={!canAdjustActiveShape} aria-label="Shape scale" />
+                <input type="range" min="0.35" max="1.5" step="0.05" value={activeShapeScale} onChange={(event) => setActiveShapeScale(Number(event.target.value))} disabled={!canAdjustActiveShape} aria-label="Shape scale" />
                 <button onClick={() => setActiveShapeScale(activeShapeScale + 0.05)} disabled={!canAdjustActiveShape}>＋</button>
                 <button onClick={() => setActiveShapeScale(1)} disabled={!canAdjustActiveShape}>{Math.round(activeShapeScale * 100)}%</button>
               </div>

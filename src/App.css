@@ -848,7 +848,7 @@ footer {
   touch-action: none;
   user-select: none;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   overflow-wrap: anywhere;
   line-height: 1.25;
 }
@@ -1072,14 +1072,7 @@ footer {
   -webkit-user-select: none;
 }
 .collage-tile.selected { outline: 2px solid #e77967; outline-offset: -2px; }
-.collage-shape-frame { position: absolute; left: 50%; top: 50%; overflow: hidden; transform: translate(-50%, -50%); }
-.collage-shape-frame.circle { clip-path: circle(50% at 50% 50%); }
-.collage-shape-frame.ellipse { clip-path: ellipse(48% 35% at 50% 50%); }
-.collage-shape-frame.star { clip-path: polygon(50% 2%, 61% 35%, 98% 35%, 68% 56%, 79% 92%, 50% 70%, 21% 92%, 32% 56%, 2% 35%, 39% 35%); }
-.collage-shape-frame.hexagon { clip-path: polygon(50% 5%, 90% 27%, 90% 73%, 50% 95%, 10% 73%, 10% 27%); }
-.collage-shape-frame.triangle { clip-path: polygon(50% 2%, 98% 98%, 2% 98%); }
-.collage-shape-frame.sticker { clip-path: inset(0 round 9%); }
-.collage-shape-frame.badge { clip-path: polygon(50% 6%, 57% 16%, 67% 10%, 69% 22%, 81% 20%, 77% 32%, 90% 37%, 79% 45%, 94% 50%, 79% 55%, 90% 63%, 77% 68%, 81% 80%, 69% 78%, 67% 90%, 57% 84%, 50% 94%, 43% 84%, 33% 90%, 31% 78%, 19% 80%, 23% 68%, 10% 63%, 21% 55%, 6% 50%, 21% 45%, 10% 37%, 23% 32%, 19% 20%, 31% 22%, 33% 10%, 43% 16%); }
+.collage-shape-frame { position: absolute; inset: 0; overflow: hidden; }
 .collage-shape-frame.heart {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
