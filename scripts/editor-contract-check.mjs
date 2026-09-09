@@ -6,6 +6,8 @@ const source = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8"
 for (const contract of [
   'shape: Exclude<Shape, "polygon">',
   'shape: "original" as const',
+  'className="collage-slot-input"',
+  'aria-label={`Upload image to collage tile ${index + 1}`}',
   'disabled={!url && !selectedCollageTemplate}',
   'value="Playfair Display"',
   'function removePrivacyCover(id: number)',
