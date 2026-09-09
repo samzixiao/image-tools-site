@@ -45,7 +45,7 @@ type TextLayer = {
   position: { x: number; y: number };
   rotation: number;
   scale: number;
-  fontFamily: "Inter" | "Roboto" | "Poppins" | "Montserrat" | "Open Sans";
+  fontFamily: "Inter" | "Roboto" | "Poppins" | "Montserrat" | "Open Sans" | "Playfair Display";
   bold: boolean;
   boxWidth: number;
   boxHeight: number;
@@ -58,7 +58,7 @@ type ImageLayer = {
   width: number;
   opacity: number;
 };
-type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; position: { x: number; y: number } };
+type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; position: { x: number; y: number }; shape: Exclude<Shape, "polygon"> };
 type Preset = {
   id: string;
   group: string;
@@ -341,6 +341,12 @@ function App() {
     layerInput = useRef<HTMLInputElement>(null),
     collageInput = useRef<HTMLInputElement>(null),
     privacyInput = useRef<HTMLInputElement>(null);
+  const previewSelectionPress = useRef<{
+    kind: "layer" | "collage" | "cover";
+    id: number;
+    wasSelected: boolean;
+    moved: boolean;
+  } | null>(null);
   const output =
       preset.id === "custom"
         ? custom
@@ -433,7 +439,7 @@ function App() {
       const next = hasTargetSlot ? [...current] : [];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
         const slotIndex = start + index;
-        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 } };
+        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, position: { x: 0.5, y: 0.5 }, shape: "original" as const };
         const existingIndex = next.findIndex((entry) => entry.slotIndex === slotIndex);
         if (existingIndex >= 0) next[existingIndex] = item;
         else next.push(item);
@@ -477,7 +483,7 @@ function App() {
       setPlacingSticker(false);
       return;
     }
-    if (!url) return;
+    if (!url && !collageTemplateId) return;
     if (addingPolygonPoint && shape === "polygon") {
       const box = event.currentTarget.getBoundingClientRect();
       setPolygonPoints((current) =>
@@ -547,6 +553,7 @@ function App() {
       return;
     }
     if (layerDrag) {
+      markPreviewSelectionMoved("layer", layerDrag.id);
       const position = {
         x: Math.min(0.9, Math.max(0.1, layerDrag.position.x + (event.clientX - layerDrag.x) / box.width)),
         y: Math.min(0.9, Math.max(0.1, layerDrag.position.y + (event.clientY - layerDrag.y) / box.height)),
@@ -569,6 +576,7 @@ function App() {
         setCollageDrag(null);
         return;
       }
+      markPreviewSelectionMoved("collage", collageDrag.id);
       const position = {
         x: Math.min(1, Math.max(0, collageDrag.position.x + (event.clientX - collageDrag.x) / box.width)),
         y: Math.min(1, Math.max(0, collageDrag.position.y + (event.clientY - collageDrag.y) / box.height)),
@@ -587,6 +595,7 @@ function App() {
       return;
     }
     if (stickerDrag) {
+      markPreviewSelectionMoved("cover", stickerDrag.id);
       const position = {
         x: Math.min(0.95, Math.max(0.05, stickerDrag.position.x + (event.clientX - stickerDrag.x) / box.width)),
         y: Math.min(0.95, Math.max(0.05, stickerDrag.position.y + (event.clientY - stickerDrag.y) / box.height)),
@@ -741,6 +750,12 @@ function App() {
   }
   function beginStickerDrag(event: PointerEvent<HTMLSpanElement>, cover: PrivacyCover) {
     event.stopPropagation();
+    previewSelectionPress.current = {
+      kind: "cover",
+      id: cover.id,
+      wasSelected: selectedCoverId === cover.id,
+      moved: false,
+    };
     setStickerDrag({
       x: event.clientX,
       y: event.clientY,
@@ -758,7 +773,12 @@ function App() {
   function beginLayerDrag(event: PointerEvent<HTMLDivElement>, layer: ImageLayer) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedImageLayerId(layer.id);
+    previewSelectionPress.current = {
+      kind: "layer",
+      id: layer.id,
+      wasSelected: selectedImageLayerId === layer.id,
+      moved: false,
+    };
     setLayerDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
   }
   function beginLayerResize(event: PointerEvent<HTMLButtonElement>, layer: ImageLayer) {
@@ -776,17 +796,54 @@ function App() {
   function beginCollageDrag(event: PointerEvent<HTMLDivElement>, item: CollageImage) {
     if (placingSticker && privacySticker) return;
     event.stopPropagation();
+    previewSelectionPress.current = {
+      kind: "collage",
+      id: item.id,
+      wasSelected: selectedCollageImageId === item.id,
+      moved: false,
+    };
     if (item.scale <= 1) {
-      setSelectedCollageImageId(item.id);
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
-    setSelectedCollageImageId(item.id);
     setCollageDrag({ id: item.id, x: event.clientX, y: event.clientY, position: item.position });
   }
   function endCollageInteraction() {
     setCollageDrag(null);
     setCollageResizeDrag(null);
+  }
+  function markPreviewSelectionMoved(kind: "layer" | "collage" | "cover", id: number) {
+    if (previewSelectionPress.current?.kind === kind && previewSelectionPress.current.id === id)
+      previewSelectionPress.current.moved = true;
+  }
+  function completePreviewSelection(kind: "layer" | "collage" | "cover", id: number) {
+    const press = previewSelectionPress.current;
+    previewSelectionPress.current = null;
+    if (press?.kind === kind && press.id === id && press.moved) {
+      if (kind === "layer") {
+        setSelectedImageLayerId(id);
+        setSelectedCollageImageId(null);
+      } else if (kind === "collage") {
+        setSelectedCollageImageId(id);
+        setSelectedImageLayerId(null);
+      } else {
+        const cover = privacyCovers.find((item) => item.id === id);
+        if (cover) setStickerSize(cover.size);
+        setSelectedCoverId(id);
+      }
+      return;
+    }
+    if (kind === "layer") {
+      setSelectedImageLayerId(press?.wasSelected ? null : id);
+      setSelectedCollageImageId(null);
+    } else if (kind === "collage") {
+      setSelectedCollageImageId(press?.wasSelected ? null : id);
+      setSelectedImageLayerId(null);
+    } else {
+      const cover = privacyCovers.find((item) => item.id === id);
+      if (cover && !press?.wasSelected) setStickerSize(cover.size);
+      setSelectedCoverId(press?.wasSelected ? null : id);
+    }
   }
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
@@ -923,9 +980,9 @@ function App() {
     image.src = url;
   }
 
-  function path(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  function path(ctx: CanvasRenderingContext2D, width: number, height: number, nextShape: Shape = shape) {
     ctx.beginPath();
-    if (shape === "polygon") {
+    if (nextShape === "polygon") {
       polygonPoints.forEach((point, index) => {
         const x = point.x * width,
           y = point.y * height;
@@ -935,7 +992,7 @@ function App() {
       ctx.closePath();
       return;
     }
-    if (shape === "circle") {
+    if (nextShape === "circle") {
       ctx.ellipse(
         width / 2,
         height / 2,
@@ -947,7 +1004,7 @@ function App() {
       );
       return;
     }
-    if (shape === "ellipse") {
+    if (nextShape === "ellipse") {
       ctx.ellipse(
         width / 2,
         height / 2,
@@ -959,7 +1016,7 @@ function App() {
       );
       return;
     }
-    if (shape === "heart") {
+    if (nextShape === "heart") {
       ctx.moveTo(width / 2, height * 0.92);
       ctx.bezierCurveTo(0, height * 0.62, 0, height * 0.22, width * 0.22, height * 0.12);
       ctx.bezierCurveTo(width * 0.36, height * 0.055, width * 0.47, height * 0.15, width / 2, height * 0.26);
@@ -968,23 +1025,23 @@ function App() {
       ctx.closePath();
       return;
     }
-    if (shape === "triangle") {
+    if (nextShape === "triangle") {
       ctx.moveTo(width / 2, 0);
       ctx.lineTo(width, height);
       ctx.lineTo(0, height);
       ctx.closePath();
       return;
     }
-    if (shape === "sticker") {
+    if (nextShape === "sticker") {
       ctx.roundRect(0, 0, width, height, Math.min(width, height) * 0.08);
       return;
     }
-    const points = shape === "hexagon" ? 6 : shape === "badge" ? 16 : 10;
+    const points = nextShape === "hexagon" ? 6 : nextShape === "badge" ? 16 : 10;
     for (let i = 0; i < points; i++) {
       const radius =
-          shape === "hexagon"
+          nextShape === "hexagon"
             ? 0.48
-            : shape === "badge"
+            : nextShape === "badge"
               ? i % 2
                 ? 0.39
                 : 0.48
@@ -1208,20 +1265,24 @@ function App() {
     height: number,
     scale = 1,
     position = { x: 0.5, y: 0.5 },
+    imageShape: CollageImage["shape"] = "original",
   ) {
     const ratio = Math.min(width / image.naturalWidth, height / image.naturalHeight) * scale;
     const drawWidth = image.naturalWidth * ratio;
     const drawHeight = image.naturalHeight * ratio;
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, width, height);
+    ctx.translate(x, y);
+    if (imageShape === "original") {
+      ctx.beginPath();
+      ctx.rect(0, 0, width, height);
+    } else path(ctx, width, height, imageShape);
     ctx.clip();
-    ctx.drawImage(image, x + (width - drawWidth) * position.x, y + (height - drawHeight) * position.y, drawWidth, drawHeight);
+    ctx.drawImage(image, (width - drawWidth) * position.x, (height - drawHeight) * position.y, drawWidth, drawHeight);
     ctx.restore();
   }
   async function download() {
-    if (!url) return;
-    const image = await loadImage(url);
+    if (!url && collageImages.length === 0) return;
+    const image = url ? await loadImage(url) : null;
     const canvas = document.createElement("canvas");
     canvas.width = output.width;
     canvas.height = output.height;
@@ -1230,48 +1291,34 @@ function App() {
       ctx.fillStyle = background;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    const sx = mode === "fit" ? 0 : natural.width * crop.x,
-      sy = mode === "fit" ? 0 : natural.height * crop.y,
-      sw = mode === "fit" ? natural.width : natural.width * crop.width,
-      sh = mode === "fit" ? natural.height : natural.height * crop.height,
-      scale = Math.min(canvas.width / sw, canvas.height / sh),
-      drawWidth = sw * scale,
-      drawHeight = sh * scale;
-    ctx.save();
-    if (shape !== "original") path(ctx, canvas.width, canvas.height);
-    else
-      ctx.rect(
-        (canvas.width - drawWidth) / 2,
-        (canvas.height - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
-    ctx.clip();
-    drawExpansion(ctx, image, canvas.width, canvas.height);
-    const destinationX =
-        mode === "fit"
-          ? (canvas.width - drawWidth) * fitPosition.x
-          : (canvas.width - drawWidth) / 2,
-      destinationY =
-        mode === "fit"
-          ? (canvas.height - drawHeight) * fitPosition.y
-          : (canvas.height - drawHeight) / 2;
-    ctx.translate(destinationX + drawWidth / 2, destinationY + drawHeight / 2);
-    ctx.rotate((rotation * Math.PI) / 180);
-    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
-    ctx.filter = filterValue;
-    ctx.drawImage(
-      image,
-      sx,
-      sy,
-      sw,
-      sh,
-      -drawWidth / 2,
-      -drawHeight / 2,
-      drawWidth,
-      drawHeight,
-    );
-    ctx.restore();
+    if (shape !== "original") {
+      ctx.save();
+      path(ctx, canvas.width, canvas.height);
+      ctx.clip();
+    }
+    if (image) {
+      const sx = mode === "fit" ? 0 : natural.width * crop.x,
+        sy = mode === "fit" ? 0 : natural.height * crop.y,
+        sw = mode === "fit" ? natural.width : natural.width * crop.width,
+        sh = mode === "fit" ? natural.height : natural.height * crop.height,
+        scale = Math.min(canvas.width / sw, canvas.height / sh),
+        drawWidth = sw * scale,
+        drawHeight = sh * scale,
+        destinationX = mode === "fit" ? (canvas.width - drawWidth) * fitPosition.x : (canvas.width - drawWidth) / 2,
+        destinationY = mode === "fit" ? (canvas.height - drawHeight) * fitPosition.y : (canvas.height - drawHeight) / 2;
+      ctx.save();
+      if (shape === "original") {
+        ctx.rect(destinationX, destinationY, drawWidth, drawHeight);
+        ctx.clip();
+      }
+      drawExpansion(ctx, image, canvas.width, canvas.height);
+      ctx.translate(destinationX + drawWidth / 2, destinationY + drawHeight / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+      ctx.filter = filterValue;
+      ctx.drawImage(image, sx, sy, sw, sh, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+      ctx.restore();
+    }
     const collageTemplate = collageTemplates.find((template) => template.id === collageTemplateId);
     for (const item of collageImages) {
       const slot = collageTemplate?.slots[item.slotIndex];
@@ -1289,9 +1336,9 @@ function App() {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(x, y, width, height);
         ctx.restore();
-        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position);
+        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position, item.shape);
       } else {
-        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position);
+        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position, item.shape);
       }
     }
     for (const layer of imageLayers) {
@@ -1329,6 +1376,7 @@ function App() {
       (item) => item.kind !== "mosaic",
     ))
       await drawPrivacySticker(ctx, canvas.width, canvas.height, cover);
+    if (shape !== "original") ctx.restore();
     const extension = format.split("/")[1].replace("jpeg", "jpg"),
       link = document.createElement("a");
     link.download = `${fileName.replace(/\.[^.]+$/, "") || "image"}-${output.width}x${output.height}.${extension}`;
@@ -1379,6 +1427,32 @@ function App() {
     const fallback = ordered[index - 1] ?? ordered[index + 1];
     setCollageImages((current) => current.filter((item) => item.id !== id));
     setSelectedCollageImageId(fallback?.id ?? null);
+  }
+  function toggleImageLayer(id: number) {
+    setSelectedImageLayerId((current) => current === id ? null : id);
+    setSelectedCollageImageId(null);
+  }
+  function toggleCollageImage(id: number) {
+    setSelectedCollageImageId((current) => current === id ? null : id);
+    setSelectedImageLayerId(null);
+  }
+  function togglePrivacyCover(cover: PrivacyCover) {
+    setSelectedCoverId((current) => current === cover.id ? null : cover.id);
+    if (selectedCoverId !== cover.id) setStickerSize(cover.size);
+  }
+  function removePrivacyCover(id: number) {
+    const index = privacyCovers.findIndex((cover) => cover.id === id);
+    const fallback = privacyCovers[index - 1] ?? privacyCovers[index + 1];
+    setPrivacyCovers((current) => current.filter((cover) => cover.id !== id));
+    setSelectedCoverId(fallback?.id ?? null);
+    if (fallback) setStickerSize(fallback.size);
+    setPlacingSticker(false);
+  }
+  function removeDimensionMarker(id: number) {
+    const index = dimensionMarkers.findIndex((marker) => marker.id === id);
+    const fallback = dimensionMarkers[index - 1] ?? dimensionMarkers[index + 1];
+    setDimensionMarkers((current) => current.filter((marker) => marker.id !== id));
+    setSelectedMarkerId(fallback?.id ?? null);
   }
   function updateSelectedMarker(patch: Partial<DimensionMarker>) {
     if (selectedMarkerId === null) return;
@@ -1581,15 +1655,15 @@ function App() {
             <div className="layers-panel">
               <div className="layer-section">
                 <b>Image layers</b>
-                <button disabled={!url} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
+                <button disabled={!url && !selectedCollageTemplate} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
                 <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
                 {(url || imageLayers.length > 0 || collageImages.length > 0) && (
                   <div className="layer-list">
                     {url && <button className={selectedImageLayerId === null && selectedCollageImageId === null ? "active" : ""} onClick={() => { setSelectedImageLayerId(null); setSelectedCollageImageId(null); }}>Base image · {fileName || "Image"}</button>}
                     {imageLayers.map((layer, index) => (
-                      <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => setSelectedImageLayerId(layer.id)}>Layer {index + 1} · {layer.name}</button>
+                      <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>
                     ))}
-                    {collageImages.map((item, index) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Collage {index + 1} · {item.name}</button>)}
+                    {collageImages.map((item, index) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Collage {index + 1} · {item.name}</button>)}
                   </div>
                 )}
                 {selectedImageLayer && (
@@ -1610,11 +1684,19 @@ function App() {
                 <input id="collage-image-input" className="file-picker-input" ref={collageInput} type="file" accept="image/*" multiple={false} tabIndex={-1} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} />
                 {collageImages.length > 0 && (
                   <div className="layer-list">
-                    {collageImages.map((item) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => setSelectedCollageImageId(item.id)}>Tile {item.slotIndex + 1} · {item.name}</button>)}
+                    {collageImages.map((item) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Tile {item.slotIndex + 1} · {item.name}</button>)}
                   </div>
                 )}
                 {selectedCollageImage && (
-                  <div className="layer-controls"><label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label><button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button></div>
+                  <div className="layer-controls">
+                    <label>Tile zoom <input type="range" min="1" max="2.5" step="0.05" value={selectedCollageImage.scale} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, scale: Number(event.target.value) } : item))} /></label>
+                    <label>Tile shape
+                      <select value={selectedCollageImage.shape} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: event.target.value as CollageImage["shape"] } : item))}>
+                        {shapes.filter((item): item is CollageImage["shape"] => item !== "polygon").map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
+                      </select>
+                    </label>
+                    <button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button>
+                  </div>
                 )}
                 <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Drag ↘ in a selected tile to zoom it.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
@@ -1725,12 +1807,7 @@ function App() {
               </button>
               <button
                 onClick={() => {
-                  if (selectedCoverId !== null)
-                    setPrivacyCovers((current) =>
-                      current.filter((cover) => cover.id !== selectedCoverId),
-                    );
-                  setSelectedCoverId(null);
-                  setPlacingSticker(false);
+                  if (selectedCoverId !== null) removePrivacyCover(selectedCoverId);
                 }}
                 disabled={selectedCoverId === null}
               >
@@ -1743,8 +1820,7 @@ function App() {
                       key={cover.id}
                       className={selectedCoverId === cover.id ? "active" : ""}
                       onClick={() => {
-                        setSelectedCoverId(cover.id);
-                        setStickerSize(cover.size);
+                        togglePrivacyCover(cover);
                       }}
                     >
                       {cover.kind === "mosaic" ? "▦" : cover.kind} #{index + 1}
@@ -1856,7 +1932,7 @@ function App() {
             <div className="caption-module">
               <button
                 className="caption-add"
-                disabled={!url}
+                disabled={!url && !selectedCollageTemplate}
                 onClick={() => {
                   const id = Date.now();
                   setTextLayers((current) => [...current, { id, content: "Your text", color: "#111111", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
@@ -1900,6 +1976,7 @@ function App() {
                         <option value="Poppins">Poppins</option>
                         <option value="Montserrat">Montserrat</option>
                         <option value="Open Sans">Open Sans</option>
+                        <option value="Playfair Display">Playfair Display · right size</option>
                       </select>
                     </label>
                     <label className="caption-weight-toggle">
@@ -2010,7 +2087,7 @@ function App() {
             <div className="measure-module">
               <button
                 className="measure-add"
-                disabled={!url}
+                disabled={!url && !selectedCollageTemplate}
                 onClick={() => {
                   const id = Date.now();
                   setDimensionMarkers((current) => [
@@ -2127,10 +2204,7 @@ function App() {
                   <button
                     className="measure-remove"
                     onClick={() => {
-                      setDimensionMarkers((current) =>
-                        current.filter((marker) => marker.id !== selectedMarker.id),
-                      );
-                      setSelectedMarkerId(null);
+                      removeDimensionMarker(selectedMarker.id);
                     }}
                   >
                     Delete selected arrow
@@ -2188,10 +2262,11 @@ function App() {
               </b>
             </div>
             <div
-              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"}
+              className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
+                clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                 backgroundColor: transparentBackground ? undefined : background,
                 backgroundImage:
                   expandMode === "gradient"
@@ -2241,14 +2316,14 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); setSelectedCollageImageId(item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"} ${item.shape}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} />{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} htmlFor="collage-image-input" className={`collage-tile empty${booth}`} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
                       key={layer.id}
                       className={layer.id === selectedImageLayerId ? "image-layer-frame selected editable" : "image-layer-frame editable"}
                       onPointerDown={(event) => beginLayerDrag(event, layer)}
-                      onClick={(event) => { event.stopPropagation(); setSelectedImageLayerId(layer.id); }}
+                      onClick={(event) => { event.stopPropagation(); completePreviewSelection("layer", layer.id); }}
                       style={{ opacity: layer.opacity / 100, width: `${layer.width}%`, left: `${layer.position.x * 100}%`, top: `${layer.position.y * 100}%` }}
                     >
                       <img src={layer.url} alt={layer.name} />
@@ -2283,7 +2358,7 @@ function App() {
                       ))}
                     </div>
                   )}
-                  {url && shape === "polygon" && (
+                  {(url || selectedCollageTemplate) && shape === "polygon" && (
                     <svg className="polygon-preview" viewBox="0 0 100 100">
                       <polygon
                         points={polygonPoints
@@ -2335,7 +2410,10 @@ function App() {
                           )}
                         </svg>
                         {marker.id === selectedMarkerId && (
-                          <button className="measure-resize-handle" aria-label="Resize arrow" onPointerDown={(event) => beginMarkerResize(event, marker)}>↔</button>
+                          <>
+                            <button className="measure-resize-handle" aria-label="Resize arrow" onPointerDown={(event) => beginMarkerResize(event, marker)}>↔</button>
+                            <button className="measure-delete-handle" aria-label="Delete dimension arrow" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removeDimensionMarker(marker.id); }}>×</button>
+                          </>
                         )}
                       </div>
                       <div
@@ -2427,8 +2505,7 @@ function App() {
                       onPointerDown={(event) => beginStickerDrag(event, cover)}
                       onClick={(event) => {
                         event.stopPropagation();
-                        setSelectedCoverId(cover.id);
-                        setStickerSize(cover.size);
+                        completePreviewSelection("cover", cover.id);
                       }}
                       style={{
                         left: `${cover.position.x * 100}%`,
@@ -2450,13 +2527,16 @@ function App() {
                         cover.kind
                       )}
                       {selectedCoverId === cover.id && (
-                        <button
-                          className="sticker-resize-handle"
-                          aria-label="Resize privacy cover"
-                          onPointerDown={(event) => beginStickerResize(event, cover)}
-                        >
-                          ↘
-                        </button>
+                        <>
+                          <button
+                            className="sticker-resize-handle"
+                            aria-label="Resize privacy cover"
+                            onPointerDown={(event) => beginStickerResize(event, cover)}
+                          >
+                            ↘
+                          </button>
+                          <button className="sticker-delete-handle" aria-label="Delete privacy cover" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removePrivacyCover(cover.id); }}>×</button>
+                        </>
                       )}
                     </span>
                   ))}
@@ -2567,7 +2647,7 @@ function App() {
                   {quality}%
                 </label>
               )}
-              <button className="download" onClick={download} disabled={!url}>
+              <button className="download" onClick={download} disabled={!url && collageImages.length === 0}>
                 Download image <b>↓</b>
               </button>
             </div>
