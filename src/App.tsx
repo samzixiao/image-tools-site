@@ -2295,6 +2295,12 @@ function App() {
                     ? `linear-gradient(135deg, ${background}, #1e293b)`
                     : undefined,
               }}
+              onPointerDownCapture={(event) => {
+                if (editingTextId === null) return;
+                const target = event.target;
+                if (target instanceof Element && target.closest(`[data-text-layer-id="${editingTextId}"]`)) return;
+                setEditingTextId(null);
+              }}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
               onPointerUp={() => {
@@ -2458,6 +2464,7 @@ function App() {
                   {textLayers.map((layer) => (
                     <div
                       key={layer.id}
+                      data-text-layer-id={layer.id}
                       className={layer.id === selectedTextId ? "caption-overlay selected editable" : "caption-overlay editable"}
                       onPointerDown={(event) => beginTextDrag(event, layer)}
                       onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}

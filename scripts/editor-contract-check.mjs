@@ -30,6 +30,9 @@ for (const contract of [
   'aria-label="Delete privacy cover"',
   'aria-label="Delete dimension arrow"',
   'aria-label="Delete text layer"',
+  'onPointerDownCapture={(event) => {',
+  'target.closest(`[data-text-layer-id="${editingTextId}"]`)',
+  'data-text-layer-id={layer.id}',
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
