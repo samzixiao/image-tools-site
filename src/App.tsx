@@ -42,6 +42,8 @@ type TextLayer = {
   id: number;
   content: string;
   color: string;
+  strokeColor: string;
+  strokeWidth: number;
   size: number;
   position: { x: number; y: number };
   rotation: number;
@@ -250,7 +252,7 @@ function App() {
     [borderColor, setBorderColor] = useState("#e66d5b"),
     [borderWidth, setBorderWidth] = useState(0);
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]),
-    [_selectedTextId, setSelectedTextId] = useState<number | null>(null);
+    [selectedTextId, setSelectedTextId] = useState<number | null>(null);
   const [textDrag, setTextDrag] = useState<{
     id: number;
     x: number;
@@ -843,6 +845,8 @@ function App() {
       previewSelectionPress.current.moved = true;
   }
   function completePreviewSelection(kind: "layer" | "collage" | "cover", id: number) {
+    setSelectedTextId(null);
+    setEditingTextId(null);
     const press = previewSelectionPress.current;
     previewSelectionPress.current = null;
     if (press?.kind === kind && press.id === id && press.moved) {
@@ -874,18 +878,24 @@ function App() {
   function beginMarkerDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedTextId(null);
+    setEditingTextId(null);
     setSelectedMarkerId(marker.id);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
   function beginMarkerResize(event: PointerEvent<HTMLButtonElement>, marker: DimensionMarker) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedTextId(null);
+    setEditingTextId(null);
     setSelectedMarkerId(marker.id);
     setMarkerResizeDrag({ id: marker.id, x: event.clientX, y: event.clientY, length: marker.length, rotation: marker.rotation });
   }
   function beginMarkerLabelDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedTextId(null);
+    setEditingTextId(null);
     setSelectedMarkerId(marker.id);
     setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
@@ -1209,6 +1219,9 @@ function App() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = layer.color;
+    ctx.strokeStyle = layer.strokeColor;
+    ctx.lineWidth = Math.max(0, (width * layer.strokeWidth) / 1080);
+    ctx.lineJoin = "round";
     const maxWidth = (width * layer.boxWidth) / 100,
       lineHeight = size * 1.25,
       maxLines = Math.max(1, Math.floor(((height * layer.boxHeight) / 100) / lineHeight)),
@@ -1224,9 +1237,11 @@ function App() {
     if (line) lines.push(line);
     const visibleLines = lines.slice(0, maxLines),
       startY = -((visibleLines.length - 1) * lineHeight) / 2;
-    visibleLines.forEach((item, index) =>
-      ctx.fillText(item, 0, startY + index * lineHeight, maxWidth),
-    );
+    visibleLines.forEach((item, index) => {
+      const y = startY + index * lineHeight;
+      if (layer.strokeWidth > 0) ctx.strokeText(item, 0, y, maxWidth);
+      ctx.fillText(item, 0, y, maxWidth);
+    });
     ctx.restore();
   }
   function drawExpansion(
@@ -1446,6 +1461,7 @@ function App() {
   const selectedMarker = dimensionMarkers.find(
     (marker) => marker.id === selectedMarkerId,
   );
+  const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
   const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
@@ -1542,11 +1558,19 @@ function App() {
       ),
     );
   }
+  function updateSelectedText(patch: Partial<TextLayer>) {
+    if (selectedTextId === null) return;
+    setTextLayers((current) =>
+      current.map((layer) => layer.id === selectedTextId ? { ...layer, ...patch } : layer),
+    );
+  }
   function removeTextLayer(id: number) {
+    const index = textLayers.findIndex((layer) => layer.id === id);
+    const fallback = textLayers[index - 1] ?? textLayers[index + 1];
     setTextDrag(null);
     setTextResizeDrag(null);
     setTextLayers((current) => current.filter((layer) => layer.id !== id));
-    setSelectedTextId((current) => current === id ? null : current);
+    setSelectedTextId((current) => current === id ? fallback?.id ?? null : current);
     setEditingTextId((current) => current === id ? null : current);
   }
   return (
@@ -2012,13 +2036,78 @@ function App() {
                 disabled={!url && !selectedCollageTemplate}
                 onClick={() => {
                   const id = Date.now();
-                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#111111", size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
+                  setTextLayers((current) => [...current, { id, content: "Your text", color: "#111111", strokeColor: "#ffffff", strokeWidth: 0, size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
                   setSelectedTextId(id);
+                  setEditingTextId(id);
                 }}
               >
                 ＋ Add text layer
               </button>
-              <small className="caption-direct-edit">Single-click to select and drag. Double-click to edit; the border, resize handle, and × appear only while editing.</small>
+              <small className="caption-direct-edit">New text opens ready to type. Single-click selects it; double-click edits the words.</small>
+              {textLayers.length > 0 && (
+                <div className="caption-list" aria-label="Text layers">
+                  {textLayers.map((layer, index) => (
+                    <button
+                      key={layer.id}
+                      className={layer.id === selectedTextId ? "active" : ""}
+                      aria-pressed={layer.id === selectedTextId}
+                      onClick={() => {
+                        setEditingTextId(null);
+                        setSelectedTextId((current) => current === layer.id ? null : layer.id);
+                      }}
+                    >
+                      Text {index + 1} · {layer.content || "Empty"}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selectedText && (
+                <div className="caption-editor">
+                  <div>
+                    <label>
+                      Font
+                      <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as TextLayer["fontFamily"] })}>
+                        <option value="Inter">Inter</option>
+                        <option value="Roboto">Roboto</option>
+                        <option value="Poppins">Poppins</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Open Sans">Open Sans</option>
+                        <option value="Playfair Display">Playfair Display Italic · right size</option>
+                      </select>
+                    </label>
+                    <label>
+                      Text color
+                      <input type="color" aria-label="Text color" value={selectedText.color} onChange={(event) => updateSelectedText({ color: event.target.value })} />
+                    </label>
+                    <label>
+                      Font size
+                      <input type="range" min="12" max="160" value={selectedText.size} onChange={(event) => updateSelectedText({ size: Number(event.target.value) })} />
+                      <b>{selectedText.size}px</b>
+                    </label>
+                    <label className="caption-weight-toggle">
+                      <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
+                    </label>
+                    <label>
+                      Outline color
+                      <input type="color" aria-label="Text outline color" value={selectedText.strokeColor} onChange={(event) => updateSelectedText({ strokeColor: event.target.value })} />
+                    </label>
+                    <label>
+                      Outline width
+                      <input type="range" aria-label="Text outline width" min="0" max="10" step="0.5" value={selectedText.strokeWidth} onChange={(event) => updateSelectedText({ strokeWidth: Number(event.target.value) })} />
+                      <b>{selectedText.strokeWidth}px</b>
+                    </label>
+                    <label>
+                      Rotate
+                      <input type="range" min="-180" max="180" value={selectedText.rotation} onChange={(event) => updateSelectedText({ rotation: Number(event.target.value) })} />
+                    </label>
+                    <label>
+                      Scale
+                      <input type="range" min="0.3" max="3" step="0.1" value={selectedText.scale} onChange={(event) => updateSelectedText({ scale: Number(event.target.value) })} />
+                    </label>
+                    <button className="caption-remove" onClick={() => removeTextLayer(selectedText.id)}>Delete text</button>
+                  </div>
+                </div>
+              )}
               <div>
                 <label>
                   Background{" "}
@@ -2344,7 +2433,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => event.stopPropagation()} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2465,9 +2554,13 @@ function App() {
                     <div
                       key={layer.id}
                       data-text-layer-id={layer.id}
-                      className={editingTextId === layer.id ? "caption-overlay selected editable" : "caption-overlay editable"}
+                      className={`caption-overlay editable${layer.id === selectedTextId ? " selected" : ""}${editingTextId === layer.id ? " editing" : ""}`}
                       onPointerDown={(event) => beginTextDrag(event, layer)}
-                      onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedTextId(layer.id);
+                        if (event.detail >= 2) setEditingTextId(layer.id);
+                      }}
                       onDoubleClick={(event) => {
                         event.stopPropagation();
                         setSelectedTextId(layer.id);
@@ -2475,6 +2568,7 @@ function App() {
                       }}
                       style={{
                         color: layer.color,
+                        WebkitTextStroke: layer.strokeWidth > 0 ? `${layer.strokeWidth}px ${layer.strokeColor}` : undefined,
                         fontSize: `${Math.max(14, layer.size / 2)}px`,
                         left: `${layer.position.x * 100}%`,
                         top: `${layer.position.y * 100}%`,

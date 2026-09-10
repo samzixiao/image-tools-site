@@ -23,7 +23,7 @@ for (const contract of [
   'aria-label="Upload main image in preview"',
   'disabled={!url && !selectedCollageTemplate}',
   'fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal"',
-  'Single-click to select and drag. Double-click to edit; the border, resize handle, and × appear only while editing.',
+  'New text opens ready to type. Single-click selects it; double-click edits the words.',
   'Feedback & ideas ↗',
   'function removePrivacyCover(id: number)',
   'const fallback = privacyCovers[index - 1] ?? privacyCovers[index + 1];',
@@ -33,8 +33,15 @@ for (const contract of [
   'onPointerDownCapture={(event) => {',
   'target.closest(`[data-text-layer-id="${editingTextId}"]`)',
   'data-text-layer-id={layer.id}',
-  'className={editingTextId === layer.id ? "caption-overlay selected editable" : "caption-overlay editable"}',
+  'className={`caption-overlay editable${layer.id === selectedTextId ? " selected" : ""}${editingTextId === layer.id ? " editing" : ""}`}',
   '{editingTextId === layer.id && (',
+  'setEditingTextId(id);',
+  'if (event.detail >= 2) setEditingTextId(layer.id);',
+  'aria-label="Text layers"',
+  'aria-label="Text outline color"',
+  'aria-label="Text outline width"',
+  'if (layer.strokeWidth > 0) ctx.strokeText(item, 0, y, maxWidth);',
+  'setSelectedTextId(null);',
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
@@ -43,8 +50,9 @@ assert.ok(!source.includes("Box width"), "Legacy text box-width control must not
 assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
-assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*none;/.test(styles), "Empty collage tiles must not cover text interactions");
-assert.ok(/\.collage-slot-input\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The central collage upload control must remain clickable");
+assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
+assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
+assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
 
