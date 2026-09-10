@@ -250,7 +250,7 @@ function App() {
     [borderColor, setBorderColor] = useState("#e66d5b"),
     [borderWidth, setBorderWidth] = useState(0);
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]),
-    [selectedTextId, setSelectedTextId] = useState<number | null>(null);
+    [_selectedTextId, setSelectedTextId] = useState<number | null>(null);
   const [textDrag, setTextDrag] = useState<{
     id: number;
     x: number;
@@ -2018,7 +2018,7 @@ function App() {
               >
                 ＋ Add text layer
               </button>
-              <small className="caption-direct-edit">Double-click text in the preview to edit it. Drag to move, use ↘ to resize, and × to delete.</small>
+              <small className="caption-direct-edit">Single-click to select and drag. Double-click to edit; the border, resize handle, and × appear only while editing.</small>
               <div>
                 <label>
                   Background{" "}
@@ -2465,7 +2465,7 @@ function App() {
                     <div
                       key={layer.id}
                       data-text-layer-id={layer.id}
-                      className={layer.id === selectedTextId ? "caption-overlay selected editable" : "caption-overlay editable"}
+                      className={editingTextId === layer.id ? "caption-overlay selected editable" : "caption-overlay editable"}
                       onPointerDown={(event) => beginTextDrag(event, layer)}
                       onClick={(event) => { event.stopPropagation(); setSelectedTextId(layer.id); }}
                       onDoubleClick={(event) => {
@@ -2502,7 +2502,11 @@ function App() {
                               ),
                             )
                           }
-                          onBlur={() => setEditingTextId(null)}
+                          onBlur={(event) => {
+                            const nextTarget = event.relatedTarget;
+                            if (nextTarget instanceof Element && nextTarget.closest(`[data-text-layer-id="${layer.id}"]`)) return;
+                            setEditingTextId(null);
+                          }}
                           onKeyDown={(event) => {
                             if (event.key === "Escape") {
                               event.currentTarget.blur();
@@ -2510,7 +2514,7 @@ function App() {
                           }}
                         />
                       ) : layer.content}
-                      {layer.id === selectedTextId && editingTextId !== layer.id && (
+                      {editingTextId === layer.id && (
                         <>
                           <button className="caption-resize-handle" aria-label="Resize text box" onPointerDown={(event) => beginTextResize(event, layer)}>↘</button>
                           <button

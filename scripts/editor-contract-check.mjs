@@ -23,7 +23,7 @@ for (const contract of [
   'aria-label="Upload main image in preview"',
   'disabled={!url && !selectedCollageTemplate}',
   'fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal"',
-  'Double-click text in the preview to edit it',
+  'Single-click to select and drag. Double-click to edit; the border, resize handle, and × appear only while editing.',
   'Feedback & ideas ↗',
   'function removePrivacyCover(id: number)',
   'const fallback = privacyCovers[index - 1] ?? privacyCovers[index + 1];',
@@ -33,11 +33,14 @@ for (const contract of [
   'onPointerDownCapture={(event) => {',
   'target.closest(`[data-text-layer-id="${editingTextId}"]`)',
   'data-text-layer-id={layer.id}',
+  'className={editingTextId === layer.id ? "caption-overlay selected editable" : "caption-overlay editable"}',
+  '{editingTextId === layer.id && (',
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
 
 assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
+assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*none;/.test(styles), "Empty collage tiles must not cover text interactions");
