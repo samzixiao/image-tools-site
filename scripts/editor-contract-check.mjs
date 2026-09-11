@@ -40,13 +40,17 @@ for (const contract of [
   'aria-label="Text layers"',
   'aria-label="Text outline color"',
   'aria-label="Text outline width"',
-  'if (layer.strokeWidth > 0) ctx.strokeText(item, 0, y, maxWidth);',
+  'function textOutlineShadow(color: string, width: number)',
+  'const outlineRadius = Math.max(0, (width * layer.strokeWidth) / 1080);',
+  'ctx.fillText(item, 0, y, maxWidth);',
   'setSelectedTextId(null);',
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
 
 assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
+assert.ok(!source.includes("strokeText"), "Text outlines must not use inward canvas strokeText rendering");
+assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");
 assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");

@@ -53,6 +53,16 @@ type TextLayer = {
   boxWidth: number;
   boxHeight: number;
 };
+
+function textOutlineShadow(color: string, width: number) {
+  if (width <= 0) return "none";
+  const steps = 16;
+  return Array.from({ length: steps }, (_, index) => {
+    const angle = (index / steps) * Math.PI * 2;
+    return `${Math.cos(angle) * width}px ${Math.sin(angle) * width}px 0 ${color}`;
+  }).join(", ");
+}
+
 type ImageLayer = {
   id: number;
   url: string;
@@ -1218,10 +1228,7 @@ function App() {
     ctx.font = `${layer.fontFamily === "Playfair Display" ? "italic " : ""}${layer.bold ? 700 : 400} ${size}px "${layer.fontFamily}", Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = layer.color;
-    ctx.strokeStyle = layer.strokeColor;
-    ctx.lineWidth = Math.max(0, (width * layer.strokeWidth) / 1080);
-    ctx.lineJoin = "round";
+    const outlineRadius = Math.max(0, (width * layer.strokeWidth) / 1080);
     const maxWidth = (width * layer.boxWidth) / 100,
       lineHeight = size * 1.25,
       maxLines = Math.max(1, Math.floor(((height * layer.boxHeight) / 100) / lineHeight)),
@@ -1239,7 +1246,20 @@ function App() {
       startY = -((visibleLines.length - 1) * lineHeight) / 2;
     visibleLines.forEach((item, index) => {
       const y = startY + index * lineHeight;
-      if (layer.strokeWidth > 0) ctx.strokeText(item, 0, y, maxWidth);
+      if (outlineRadius > 0) {
+        ctx.fillStyle = layer.strokeColor;
+        const outlineSteps = 16;
+        for (let step = 0; step < outlineSteps; step += 1) {
+          const angle = (step / outlineSteps) * Math.PI * 2;
+          ctx.fillText(
+            item,
+            Math.cos(angle) * outlineRadius,
+            y + Math.sin(angle) * outlineRadius,
+            maxWidth,
+          );
+        }
+      }
+      ctx.fillStyle = layer.color;
       ctx.fillText(item, 0, y, maxWidth);
     });
     ctx.restore();
@@ -2568,7 +2588,7 @@ function App() {
                       }}
                       style={{
                         color: layer.color,
-                        WebkitTextStroke: layer.strokeWidth > 0 ? `${layer.strokeWidth}px ${layer.strokeColor}` : undefined,
+                        textShadow: textOutlineShadow(layer.strokeColor, layer.strokeWidth),
                         fontSize: `${Math.max(14, layer.size / 2)}px`,
                         left: `${layer.position.x * 100}%`,
                         top: `${layer.position.y * 100}%`,
@@ -2578,7 +2598,6 @@ function App() {
                         fontFamily: `"${layer.fontFamily}", Arial, sans-serif`,
                         fontWeight: layer.bold ? 700 : 400,
                         fontStyle: layer.fontFamily === "Playfair Display" ? "italic" : "normal",
-                        textShadow: "none",
                       }}
                     >
                       {editingTextId === layer.id ? (
