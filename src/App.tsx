@@ -231,13 +231,16 @@ const collageTemplates = [
 ] as const;
 
 function App() {
+  const requestedPresetId = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("preset");
+  const requestedPreset = presets.find((item) => item.id === requestedPresetId) ?? presets[0];
+  const hasRequestedPreset = presets.some((item) => item.id === requestedPresetId);
   const [url, setUrl] = useState(""),
     [originalUrl, setOriginalUrl] = useState(""),
     [fileName, setFileName] = useState(""),
     [natural, setNatural] = useState({ width: 0, height: 0 });
-  const [preset, setPreset] = useState(presets[0]),
+  const [preset, setPreset] = useState(requestedPreset),
     [custom, setCustom] = useState({ width: 1080, height: 1080 }),
-    [sizeSelected, setSizeSelected] = useState(false);
+    [sizeSelected, setSizeSelected] = useState(hasRequestedPreset);
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
     [mode, setMode] = useState<"crop" | "fit">("crop");
@@ -1601,6 +1604,7 @@ function App() {
         </a>
         <nav>
           <a href="#tool">Editor</a>
+          <a href="/instagram-post-size/">Size guides</a>
           <a href="#ecommerce">E-commerce tools</a>
           <a href="#how">How it works</a>
           <a className="feedback-link" href="https://github.com/samzixiao/image-tools-site/issues/new?title=%5BFeedback%5D%20&body=What%20were%20you%20trying%20to%20do%3F%0A%0AWhat%20happened%3F%0A%0AFeature%20idea%20%28optional%29%3A" target="_blank" rel="noreferrer">Feedback & ideas ↗</a>

@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const source = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 const styles = await readFile(new URL("../src/App.css", import.meta.url), "utf8");
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const seoPages = [
+  ["instagram-post-size", "Instagram Post Size: 1080 × 1080 px", "ig"],
+  ["instagram-story-size", "Instagram Story Size: 1080 × 1920 px", "story"],
+  ["youtube-thumbnail-size", "YouTube Thumbnail Size: 1280 × 720 px", "youtube"],
+  ["amazon-product-image-size", "Amazon Product Image Size: 2000 × 2000 px", "amazon"],
+  ["etsy-image-size", "Etsy Image Size: 2000 × 1600 px", "etsy"],
+];
 
 for (const contract of [
   'shape: Exclude<Shape, "polygon">',
@@ -59,5 +66,31 @@ assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
+assert.ok(source.includes('href="/instagram-post-size/">Size guides</a>'), "Homepage must link to the SEO size guides");
+assert.ok(source.includes("new URLSearchParams(window.location.search)"), "SEO landing page preset links must be handled by the editor");
+assert.ok(source.includes("const requestedPreset = presets.find"), "Requested preset must initialize the editor");
+
+for (const [route, heading, presetId] of seoPages) {
+  const pageUrl = new URL(`../public/${route}/index.html`, import.meta.url);
+  await access(pageUrl);
+  const page = await readFile(pageUrl, "utf8");
+  assert.ok(page.includes(`<h1>${heading}</h1>`), `Missing SEO heading for ${route}`);
+  assert.ok(page.includes(`/?preset=${presetId}#tool`), `Missing editor CTA for ${route}`);
+  assert.ok(page.includes(`<link rel="canonical" href="https://image-tools-site-sigma.vercel.app/${route}/"`), `Missing canonical for ${route}`);
+}
+
+for (const page of ["about", "privacy", "terms", "feedback"]) {
+  await access(new URL(`../public/${page}/index.html`, import.meta.url));
+}
+
+const sitemap = await readFile(new URL("../public/sitemap.xml", import.meta.url), "utf8");
+for (const [route] of seoPages) {
+  assert.ok(sitemap.includes(`https://image-tools-site-sigma.vercel.app/${route}/`), `Missing ${route} from sitemap`);
+}
+assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/about/"), "Missing about page from sitemap");
+assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/privacy/"), "Missing privacy page from sitemap");
+assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/terms/"), "Missing terms page from sitemap");
+assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/feedback/"), "Missing feedback page from sitemap");
+assert.ok(await access(new URL("../public/seo.css", import.meta.url)) === undefined);
 
 console.log("Editor collage and overlay contracts passed.");
