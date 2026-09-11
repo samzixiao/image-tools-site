@@ -23,6 +23,11 @@ const guidePages = [
   ["add-text-overlays-to-images", "How to Add Text Overlays to Images Without Clutter"],
   ["prepare-image-before-uploading", "How to Prepare an Image Before Uploading It"],
 ];
+const categoryPages = [
+  ["ecommerce-image-tools", "E-commerce Image Tools for Product Listings"],
+  ["social-media-image-tools", "Social Media Image Tools and Size Workflows"],
+  ["privacy-image-tools", "Privacy Image Tools: Cover Sensitive Details"],
+];
 
 for (const contract of [
   'shape: Exclude<Shape, "polygon">',
@@ -59,6 +64,16 @@ for (const contract of [
   'aria-label="Text layers"',
   'aria-label="Text outline color"',
   'aria-label="Text outline width"',
+  'const [batchPresetIds, setBatchPresetIds]',
+  'async function downloadBatch()',
+  'className="platform-batch"',
+  'aria-label="Batch platform export"',
+  'aria-pressed={selected}',
+  'One image → multiple platform sizes',
+  'className="category-links"',
+  'href="/ecommerce-image-tools/"',
+  'href="/social-media-image-tools/"',
+  'href="/privacy-image-tools/"',
   'function textOutlineShadow(color: string, width: number)',
   'const outlineRadius = Math.max(0, (width * layer.strokeWidth) / 1080);',
   'ctx.fillText(item, 0, y, maxWidth);',
@@ -72,6 +87,7 @@ assert.ok(!source.includes("strokeText"), "Text outlines must not use inward can
 assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");
 assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
+assert.ok(styles.includes(".platform-batch") && styles.includes(".category-links"), "Workflow expansion styles are missing");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
@@ -105,6 +121,16 @@ for (const [route, heading] of guidePages) {
   assert.ok(page.includes(`<link rel="canonical" href="https://image-tools-site-sigma.vercel.app/guides/${route}/"`), `Missing canonical for guide ${route}`);
 }
 
+for (const [route, heading] of categoryPages) {
+  const pageUrl = new URL(`../public/${route}/index.html`, import.meta.url);
+  await access(pageUrl);
+  const page = await readFile(pageUrl, "utf8");
+  assert.ok(page.includes(`<h1>${heading}</h1>`), `Missing category heading for ${route}`);
+  assert.ok(page.includes('<link rel="stylesheet" href="/seo.css" />'), `Missing SEO stylesheet for ${route}`);
+  assert.ok(page.includes("/#tool") || page.includes("#tool"), `Missing editor CTA for ${route}`);
+  assert.ok(page.includes(`<link rel="canonical" href="https://image-tools-site-sigma.vercel.app/${route}/"`), `Missing canonical for ${route}`);
+}
+
 for (const page of ["about", "privacy", "terms", "feedback"]) {
   await access(new URL(`../public/${page}/index.html`, import.meta.url));
 }
@@ -118,6 +144,9 @@ for (const [route] of seoPages) {
 }
 for (const [route] of guidePages) {
   assert.ok(sitemap.includes(`https://image-tools-site-sigma.vercel.app/guides/${route}/`), `Missing guide ${route} from sitemap`);
+}
+for (const [route] of categoryPages) {
+  assert.ok(sitemap.includes(`https://image-tools-site-sigma.vercel.app/${route}/`), `Missing ${route} from sitemap`);
 }
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/about/"), "Missing about page from sitemap");
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/privacy/"), "Missing privacy page from sitemap");

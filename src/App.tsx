@@ -241,6 +241,8 @@ function App() {
   const [preset, setPreset] = useState(requestedPreset),
     [custom, setCustom] = useState({ width: 1080, height: 1080 }),
     [sizeSelected, setSizeSelected] = useState(hasRequestedPreset);
+  const [batchPresetIds, setBatchPresetIds] = useState<string[]>([]),
+    [batchExporting, setBatchExporting] = useState(false);
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
     [mode, setMode] = useState<"crop" | "fit">("crop");
@@ -943,6 +945,7 @@ function App() {
     setPresetFrameScale(1);
     setShape("original");
     setShapeScale(1);
+    setBatchPresetIds([]);
     setSizeSelected(false);
     setAdjust({
       brightness: 100,
@@ -1338,6 +1341,16 @@ function App() {
       image.src = source;
     });
   }
+  function cropForAspect(targetAspect: number) {
+    if (!natural.width || !natural.height) return { x: 0, y: 0, width: 1, height: 1 };
+    const sourceAspect = natural.width / natural.height;
+    if (sourceAspect > targetAspect) {
+      const width = targetAspect / sourceAspect;
+      return { x: (1 - width) / 2, y: 0, width, height: 1 };
+    }
+    const height = sourceAspect / targetAspect;
+    return { x: 0, y: (1 - height) / 2, width: 1, height };
+  }
   function drawCoverImage(
     ctx: CanvasRenderingContext2D,
     image: HTMLImageElement,
@@ -1474,6 +1487,52 @@ function App() {
     link.href = canvas.toDataURL(format, quality / 100);
     link.click();
   }
+  async function downloadBatch() {
+    if (!url || !batchPresetIds.length || batchExporting) return;
+    setBatchExporting(true);
+    try {
+      const image = await loadImage(url);
+      const selectedPresets = presets.filter((item) => batchPresetIds.includes(item.id));
+      for (const target of selectedPresets) {
+        const canvas = document.createElement("canvas");
+        canvas.width = target.width;
+        canvas.height = target.height;
+        const ctx = canvas.getContext("2d")!;
+        if (!transparentBackground || format !== "image/png") {
+          ctx.fillStyle = background;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        const targetCrop = Math.abs(target.width / target.height - aspect) < 0.001 ? crop : cropForAspect(target.width / target.height);
+        const sx = mode === "fit" ? 0 : natural.width * targetCrop.x;
+        const sy = mode === "fit" ? 0 : natural.height * targetCrop.y;
+        const sw = mode === "fit" ? natural.width : natural.width * targetCrop.width;
+        const sh = mode === "fit" ? natural.height : natural.height * targetCrop.height;
+        const scale = Math.min(canvas.width / sw, canvas.height / sh);
+        const drawWidth = sw * scale;
+        const drawHeight = sh * scale;
+        const destinationX = mode === "fit" ? (canvas.width - drawWidth) * fitPosition.x : (canvas.width - drawWidth) / 2;
+        const destinationY = mode === "fit" ? (canvas.height - drawHeight) * fitPosition.y : (canvas.height - drawHeight) / 2;
+        ctx.save();
+        ctx.rect(destinationX, destinationY, drawWidth, drawHeight);
+        ctx.clip();
+        drawExpansion(ctx, image, canvas.width, canvas.height);
+        ctx.translate(destinationX + drawWidth / 2, destinationY + drawHeight / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+        ctx.filter = filterValue;
+        ctx.drawImage(image, sx, sy, sw, sh, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.restore();
+        const extension = format.split("/")[1].replace("jpeg", "jpg");
+        const link = document.createElement("a");
+        link.download = `${fileName.replace(/\.[^.]+$/, "") || "image"}-${target.width}x${target.height}.${extension}`;
+        link.href = canvas.toDataURL(format, quality / 100);
+        link.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
+      }
+    } finally {
+      setBatchExporting(false);
+    }
+  }
 
   const previewStyle = {
     objectFit: "contain" as const,
@@ -1605,7 +1664,9 @@ function App() {
         <nav>
           <a href="#tool">Editor</a>
           <a href="/instagram-post-size/">Size guides</a>
-          <a href="#ecommerce">E-commerce tools</a>
+          <a href="/ecommerce-image-tools/">E-commerce</a>
+          <a href="/social-media-image-tools/">Social media</a>
+          <a href="/privacy-image-tools/">Privacy</a>
           <a href="#how">How it works</a>
           <a className="feedback-link" href="https://github.com/samzixiao/image-tools-site/issues/new?title=%5BFeedback%5D%20&body=What%20were%20you%20trying%20to%20do%3F%0A%0AWhat%20happened%3F%0A%0AFeature%20idea%20%28optional%29%3A" target="_blank" rel="noreferrer">Feedback & ideas ↗</a>
         </nav>
@@ -1618,8 +1679,8 @@ function App() {
             Make every image the <em>right size.</em>
           </h1>
           <p>
-            Resize, shape-crop, annotate, and transform images for shops, social
-            media, websites, and everyday work.
+            Prepare one image for product listings, social posts, privacy-safe
+            sharing, and everyday work without leaving your browser.
           </p>
         </section>
         <section className="workspace" id="tool">
@@ -2818,7 +2879,63 @@ function App() {
                 Download image <b>↓</b>
               </button>
             </div>
+            <div className="platform-batch" aria-label="Batch platform export">
+              <div className="platform-batch-head">
+                <div>
+                  <strong>One image → multiple platform sizes</strong>
+                  <small>Choose any combination, then download the main image versions together.</small>
+                </div>
+                <span>{batchPresetIds.length} selected</span>
+              </div>
+              <div className="batch-options">
+                {presets.map((item) => {
+                  const selected = batchPresetIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={selected ? "batch-option active" : "batch-option"}
+                      aria-pressed={selected}
+                      disabled={!url}
+                      onClick={() => setBatchPresetIds((current) => selected ? current.filter((id) => id !== item.id) : [...current, item.id])}
+                    >
+                      <b>{item.group}</b>
+                      <span>{item.en}</span>
+                      <small>{item.width} × {item.height}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="batch-export" type="button" onClick={downloadBatch} disabled={!url || !batchPresetIds.length || batchExporting}>
+                {batchExporting ? "Preparing downloads…" : `Download ${batchPresetIds.length ? `${batchPresetIds.length} selected sizes` : "selected sizes"} ↓`}
+              </button>
+              <small className="batch-note">Quick export applies the main image crop, background, rotation, flip, and adjustments. Use “Download image” for the complete collage, text, shape, privacy, and dimension-marker composition.</small>
+            </div>
           </section>
+        </section>
+        <section className="category-links" id="categories">
+          <p className="eyebrow">START WITH A JOB</p>
+          <h2>One editor, three practical workflows.</h2>
+          <div>
+            <a href="/ecommerce-image-tools/">
+              <span>01</span>
+              <h3>E-commerce image tools</h3>
+              <p>Make listing images, add cm/in dimensions, build collages, and prepare consistent product assets.</p>
+              <b>Explore product workflows →</b>
+            </a>
+            <a href="/social-media-image-tools/">
+              <span>02</span>
+              <h3>Social media image tools</h3>
+              <p>Start from platform sizes, crop a complete image set, and keep text readable across square and vertical canvases.</p>
+              <b>Explore social workflows →</b>
+            </a>
+            <a href="/privacy-image-tools/">
+              <span>03</span>
+              <h3>Privacy image tools</h3>
+              <p>Cover faces, IDs, addresses, and other sensitive details with movable stickers or adjustable mosaic blocks.</p>
+              <b>Explore privacy workflows →</b>
+            </a>
+          </div>
         </section>
         <section className="tool-cards" id="ecommerce">
           <p className="eyebrow">BUILT FOR EVERYDAY WORK</p>
