@@ -11,6 +11,18 @@ const seoPages = [
   ["amazon-product-image-size", "Amazon Product Image Size: 2000 × 2000 px", "amazon"],
   ["etsy-image-size", "Etsy Image Size: 2000 × 1600 px", "etsy"],
 ];
+const guidePages = [
+  ["crop-image-to-exact-size", "How to Crop an Image to an Exact Size"],
+  ["resize-image-without-losing-quality", "How to Resize an Image Without Losing Quality"],
+  ["add-cm-inch-dimensions-to-images", "How to Add cm and Inch Dimensions to an Image"],
+  ["prepare-marketplace-product-images", "How to Prepare Product Images for Marketplaces"],
+  ["create-social-media-image-set", "How to Create a Consistent Social Media Image Set"],
+  ["use-shape-crop-for-profile-images", "How to Use Shape Crop for Profile Images and Highlights"],
+  ["cover-private-information-in-images", "How to Cover Private Information in an Image"],
+  ["build-a-photo-collage", "How to Build a 2 to 9 Image Photo Collage"],
+  ["add-text-overlays-to-images", "How to Add Text Overlays to Images Without Clutter"],
+  ["prepare-image-before-uploading", "How to Prepare an Image Before Uploading It"],
+];
 
 for (const contract of [
   'shape: Exclude<Shape, "polygon">',
@@ -80,18 +92,38 @@ for (const [route, heading, presetId] of seoPages) {
   assert.ok(page.includes(`<link rel="canonical" href="https://image-tools-site-sigma.vercel.app/${route}/"`), `Missing canonical for ${route}`);
 }
 
+for (const [route, heading] of guidePages) {
+  const pageUrl = new URL(`../public/guides/${route}/index.html`, import.meta.url);
+  await access(pageUrl);
+  const page = await readFile(pageUrl, "utf8");
+  assert.ok(page.includes(`<h1>${heading}</h1>`), `Missing guide heading for ${route}`);
+  assert.ok(page.includes('<article class="card article">'), `Missing article body for ${route}`);
+  const articleText = page.replace(/^[\s\S]*?<article class="card article">/, "").replace(/<\/article>[\s\S]*$/, "").replace(/<[^>]+>/g, " ");
+  const words = articleText.split(/\s+/).filter(Boolean).length;
+  assert.ok(words >= 700, `Guide ${route} is too short: ${words} words`);
+  assert.ok(page.includes("#tool"), `Missing editor CTA for guide ${route}`);
+  assert.ok(page.includes(`<link rel="canonical" href="https://image-tools-site-sigma.vercel.app/guides/${route}/"`), `Missing canonical for guide ${route}`);
+}
+
 for (const page of ["about", "privacy", "terms", "feedback"]) {
   await access(new URL(`../public/${page}/index.html`, import.meta.url));
 }
+const guideHub = await readFile(new URL("../public/guides/index.html", import.meta.url), "utf8");
+assert.ok(guideHub.includes("<h1>Learn the image workflow, not just the button</h1>"), "Missing guide hub heading");
+assert.ok(guideHub.includes("/guides/add-text-overlays-to-images/"), "Guide hub must link to the text guide");
 
 const sitemap = await readFile(new URL("../public/sitemap.xml", import.meta.url), "utf8");
 for (const [route] of seoPages) {
   assert.ok(sitemap.includes(`https://image-tools-site-sigma.vercel.app/${route}/`), `Missing ${route} from sitemap`);
 }
+for (const [route] of guidePages) {
+  assert.ok(sitemap.includes(`https://image-tools-site-sigma.vercel.app/guides/${route}/`), `Missing guide ${route} from sitemap`);
+}
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/about/"), "Missing about page from sitemap");
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/privacy/"), "Missing privacy page from sitemap");
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/terms/"), "Missing terms page from sitemap");
 assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/feedback/"), "Missing feedback page from sitemap");
+assert.ok(sitemap.includes("https://image-tools-site-sigma.vercel.app/guides/"), "Missing guide hub from sitemap");
 assert.ok(await access(new URL("../public/seo.css", import.meta.url)) === undefined);
 
 console.log("Editor collage and overlay contracts passed.");

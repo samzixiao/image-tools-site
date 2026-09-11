@@ -14,4 +14,15 @@
   <url><loc>https://image-tools-site-sigma.vercel.app/privacy/</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://image-tools-site-sigma.vercel.app/terms/</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://image-tools-site-sigma.vercel.app/feedback/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/crop-image-to-exact-size/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/resize-image-without-losing-quality/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/add-cm-inch-dimensions-to-images/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/prepare-marketplace-product-images/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/create-social-media-image-set/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/use-shape-crop-for-profile-images/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/cover-private-information-in-images/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/build-a-photo-collage/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/add-text-overlays-to-images/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://image-tools-site-sigma.vercel.app/guides/prepare-image-before-uploading/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
 </urlset>
