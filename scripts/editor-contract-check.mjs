@@ -66,6 +66,7 @@ assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
+assert.ok(html.includes('name="google-site-verification"'), "Missing Google Search Console ownership verification tag");
 assert.ok(source.includes('href="/instagram-post-size/">Size guides</a>'), "Homepage must link to the SEO size guides");
 assert.ok(source.includes("new URLSearchParams(window.location.search)"), "SEO landing page preset links must be handled by the editor");
 assert.ok(source.includes("const requestedPreset = presets.find"), "Requested preset must initialize the editor");
