@@ -2043,7 +2043,7 @@ function App() {
               >
                 ＋ Add text layer
               </button>
-              <small className="caption-direct-edit">New text opens ready to type. Single-click selects it; double-click edits the words.</small>
+              <small className="caption-direct-edit">New text opens ready to type. Single-click selects it with resize and delete controls; double-click edits the words.</small>
               {textLayers.length > 0 && (
                 <div className="caption-list" aria-label="Text layers">
                   {textLayers.map((layer, index) => (
@@ -2608,7 +2608,7 @@ function App() {
                           }}
                         />
                       ) : layer.content}
-                      {editingTextId === layer.id && (
+                      {layer.id === selectedTextId && (
                         <>
                           <button className="caption-resize-handle" aria-label="Resize text box" onPointerDown={(event) => beginTextResize(event, layer)}>↘</button>
                           <button
