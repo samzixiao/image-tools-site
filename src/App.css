@@ -438,6 +438,12 @@
   gap: 14px;
   align-items: start;
 }
+.preview-center-column {
+  width: 100%;
+  min-width: 0;
+  max-width: 470px;
+  justify-self: center;
+}
 .preview-head {
   display: flex;
   justify-content: space-between;
@@ -2792,8 +2798,9 @@ footer {
     order: 0;
     width: 100%;
   }
-  .preview-workarea > .stage {
+  .preview-center-column {
     order: 1;
+    width: 100%;
   }
   .preview-side-tools {
     order: 2;

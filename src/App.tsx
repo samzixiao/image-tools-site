@@ -2490,6 +2490,7 @@ function App() {
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
             </aside>
+            <div className="preview-center-column">
             <div
               className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"}
               style={{
@@ -2808,66 +2809,6 @@ function App() {
                 </label>
               )}
             </div>
-            <aside className="preview-side-tools" aria-label="Shape and preview actions">
-              <div className="preview-shape-selector">
-                <b>SHAPE CROP</b>
-                <small>Choose a shape. The image stays complete in the square preview; the shape is applied on export.</small>
-                <div className="shape-grid">
-                  {shapes.map((item) => (
-                    <button
-                      className={(selectedCollageImage?.shape ?? shape) === item && item !== "original" ? "shape active" : "shape"}
-                      key={item}
-                      type="button"
-                      aria-pressed={(selectedCollageImage?.shape ?? shape) === item && item !== "original"}
-                      onClick={() => toggleShape(item)}
-                    >
-                      <span className={`shape-icon ${item}`}>
-                        {shapeSymbol[item]}
-                      </span>
-                      <small>{item[0].toUpperCase() + item.slice(1)}</small>
-                    </button>
-                  ))}
-                </div>
-                {shape === "polygon" && (
-                  <div className="polygon-panel">
-                    <b>DIY polygon · {polygonPoints.length}/30 points</b>
-                    <div>
-                      <button
-                        className={addingPolygonPoint ? "active" : ""}
-                        type="button"
-                        onClick={() => setAddingPolygonPoint(true)}
-                        disabled={polygonPoints.length >= 30}
-                      >
-                        {addingPolygonPoint ? "Click the preview…" : "＋ Add point"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPolygonPoints(defaultPolygonPoints);
-                          setAddingPolygonPoint(false);
-                        }}
-                      >
-                        Restore
-                      </button>
-                    </div>
-                    <small>Drag orange points in the preview to reshape it.</small>
-                  </div>
-                )}
-              </div>
-              <b>QUICK ACTIONS</b>
-              <button type="button" onClick={() => fileInput.current?.click()}>Upload main image</button>
-              <button type="button" className={mode === "crop" ? "active" : ""} onClick={() => setMode("crop")} disabled={!url}>Crop to fill</button>
-              <button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode("fit")} disabled={!url}>Fit full image</button>
-              <button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>
-              <button type="button" onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center image</button>
-              <small>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} selected` : selectedBaseImage ? "Main image selected" : "Select an image layer in the preview or list"}</small>
-              {url && (
-                <button className="danger-action" type="button" onClick={removeBaseImage}>
-                  Remove main image
-                </button>
-              )}
-            </aside>
-            </div>
             <div className="preview-canvas-tools" aria-label="Canvas controls">
               <strong>ZOOM</strong>
               <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
@@ -2963,6 +2904,67 @@ function App() {
               <button className="download" onClick={downloadAll} disabled={!url && collageImages.length === 0}>
                 Download image <b>↓</b>
               </button>
+            </div>
+            </div>
+            <aside className="preview-side-tools" aria-label="Shape and preview actions">
+              <div className="preview-shape-selector">
+                <b>SHAPE CROP</b>
+                <small>Choose a shape. The image stays complete in the square preview; the shape is applied on export.</small>
+                <div className="shape-grid">
+                  {shapes.map((item) => (
+                    <button
+                      className={(selectedCollageImage?.shape ?? shape) === item && item !== "original" ? "shape active" : "shape"}
+                      key={item}
+                      type="button"
+                      aria-pressed={(selectedCollageImage?.shape ?? shape) === item && item !== "original"}
+                      onClick={() => toggleShape(item)}
+                    >
+                      <span className={`shape-icon ${item}`}>
+                        {shapeSymbol[item]}
+                      </span>
+                      <small>{item[0].toUpperCase() + item.slice(1)}</small>
+                    </button>
+                  ))}
+                </div>
+                {shape === "polygon" && (
+                  <div className="polygon-panel">
+                    <b>DIY polygon · {polygonPoints.length}/30 points</b>
+                    <div>
+                      <button
+                        className={addingPolygonPoint ? "active" : ""}
+                        type="button"
+                        onClick={() => setAddingPolygonPoint(true)}
+                        disabled={polygonPoints.length >= 30}
+                      >
+                        {addingPolygonPoint ? "Click the preview…" : "＋ Add point"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPolygonPoints(defaultPolygonPoints);
+                          setAddingPolygonPoint(false);
+                        }}
+                      >
+                        Restore
+                      </button>
+                    </div>
+                    <small>Drag orange points in the preview to reshape it.</small>
+                  </div>
+                )}
+              </div>
+              <b>QUICK ACTIONS</b>
+              <button type="button" onClick={() => fileInput.current?.click()}>Upload main image</button>
+              <button type="button" className={mode === "crop" ? "active" : ""} onClick={() => setMode("crop")} disabled={!url}>Crop to fill</button>
+              <button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode("fit")} disabled={!url}>Fit full image</button>
+              <button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>
+              <button type="button" onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center image</button>
+              <small>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} selected` : selectedBaseImage ? "Main image selected" : "Select an image layer in the preview or list"}</small>
+              {url && (
+                <button className="danger-action" type="button" onClick={removeBaseImage}>
+                  Remove main image
+                </button>
+              )}
+            </aside>
             </div>
           </section>
         </section>

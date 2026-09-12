@@ -47,6 +47,7 @@ for (const contract of [
   'className="collage-delete-handle"',
   'aria-label={`Delete collage tile ${index + 1}`}',
   'className="preview-workarea"',
+  'className="preview-center-column"',
   'className="preview-size-tools"',
   'className="preview-side-tools"',
   'className="preview-shape-selector"',
@@ -116,6 +117,7 @@ assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== lay
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(styles.includes(".preview-adjustments") && styles.includes(".preview-pixel-readout") && styles.includes(".category-links"), "Preview workflow styles are missing");
 assert.ok(styles.includes(".compact-adjustments") && styles.includes(".danger-action"), "Compact adjustments or main-image deletion styling is missing");
+assert.ok(styles.includes(".preview-center-column"), "Preview controls must stay in the center column below the canvas");
 assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\s\S]*?display:\s*none\s*!important;/.test(styles), "The old duplicate text module must stay hidden");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
