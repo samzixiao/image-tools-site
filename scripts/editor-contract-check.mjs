@@ -81,10 +81,13 @@ for (const contract of [
   'aria-label="Text outline width"',
   'const [batchPresetIds, setBatchPresetIds]',
   'async function downloadBatch()',
-  'className="platform-batch"',
-  'aria-label="Batch platform export"',
+  'async function downloadAll()',
+  'onClick={downloadAll}',
+  'className="preview-pixel-readout"',
+  'const adjustmentsModule =',
+  'function chooseCustomSize()',
+  'function toggleShape(nextShape: Shape)',
   'aria-pressed={selected}',
-  'Batch export selected sizes',
   'className="category-links"',
   'href="/ecommerce-image-tools/"',
   'href="/social-media-image-tools/"',
@@ -101,12 +104,14 @@ assert.ok(!source.includes("Box width"), "Legacy text box-width control must not
 assert.ok(!source.includes('title="Choose a size"'), "The duplicate left size panel must stay removed");
 assert.ok(!source.includes('title="Upload your image"'), "The old left upload module must stay removed");
 assert.ok(!source.includes("Smart canvas extend"), "The old Smart canvas extend module must stay removed");
+assert.ok(!source.includes('className="platform-batch"'), "Download controls must use one unified button");
 assert.ok(!source.includes('className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`'), "The stage must not be clipped or scaled together with the selected shape");
 assert.ok(!source.includes("strokeText"), "Text outlines must not use inward canvas strokeText rendering");
 assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");
 assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
-assert.ok(styles.includes(".platform-batch") && styles.includes(".category-links"), "Workflow expansion styles are missing");
+assert.ok(styles.includes(".preview-adjustments") && styles.includes(".preview-pixel-readout") && styles.includes(".category-links"), "Preview workflow styles are missing");
+assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\s\S]*?display:\s*none\s*!important;/.test(styles), "The old duplicate text module must stay hidden");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");

@@ -541,6 +541,13 @@ function App() {
       if (fallback) choosePreset(fallback);
     }
   }
+  function chooseCustomSize() {
+    const width = Math.max(1, Math.round(custom.width));
+    const height = Math.max(1, Math.round(custom.height));
+    setCustom({ width, height });
+    setBatchPresetIds([]);
+    choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width, height });
+  }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!url && !collageTemplateId) return;
     if (placingSticker && privacySticker) {
@@ -1581,6 +1588,13 @@ function App() {
       setBatchExporting(false);
     }
   }
+  async function downloadAll() {
+    if (batchPresetIds.length > 1) {
+      await downloadBatch();
+      return;
+    }
+    await download();
+  }
 
   const previewStyle = {
     objectFit: "contain" as const,
@@ -1622,6 +1636,14 @@ function App() {
       return;
     }
     setShapeScale(value);
+  }
+  function toggleShape(nextShape: Shape) {
+    if (selectedCollageImage) {
+      if (nextShape === "polygon") return;
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: item.shape === nextShape ? "original" : nextShape } : item));
+      return;
+    }
+    setShape(shape === nextShape ? "original" : nextShape);
   }
   function removeBaseImage() {
     setUrl("");
@@ -1718,6 +1740,175 @@ function App() {
     setSelectedTextId((current) => current === id ? fallback?.id ?? null : current);
     setEditingTextId((current) => current === id ? null : current);
   }
+  const textModule = (
+    <>
+      <Step
+        n="02"
+        title="Text, watermark & canvas"
+        sub="Add a caption, background, or border"
+      />
+      <div className="caption-module">
+        <button
+          className="caption-add"
+          disabled={!url && !selectedCollageTemplate}
+          onClick={() => {
+            const id = Date.now();
+            setTextLayers((current) => [...current, { id, content: "Your text", color: "#111111", strokeColor: "#ffffff", strokeWidth: 0, size: 42, position: { x: 0.5, y: 0.82 }, rotation: 0, scale: 1, fontFamily: "Inter", bold: false, boxWidth: 56, boxHeight: 16 }]);
+            setSelectedTextId(id);
+            setEditingTextId(id);
+          }}
+        >
+          ＋ Add text layer
+        </button>
+        <small className="caption-direct-edit">New text opens ready to type. Single-click selects it with resize and delete controls; double-click edits the words.</small>
+        {textLayers.length > 0 && (
+          <div className="caption-list" aria-label="Text layers">
+            {textLayers.map((layer, index) => (
+              <button
+                key={layer.id}
+                className={layer.id === selectedTextId ? "active" : ""}
+                aria-pressed={layer.id === selectedTextId}
+                onClick={() => {
+                  setEditingTextId(null);
+                  setSelectedTextId((current) => current === layer.id ? null : layer.id);
+                }}
+              >
+                Text {index + 1} · {layer.content || "Empty"}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedText && (
+          <div className="caption-editor">
+            <div>
+              <label>
+                Font
+                <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as TextLayer["fontFamily"] })}>
+                  <option value="Inter">Inter</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Playfair Display">Playfair Display Italic · right size</option>
+                </select>
+              </label>
+              <label>
+                Text color
+                <input type="color" aria-label="Text color" value={selectedText.color} onChange={(event) => updateSelectedText({ color: event.target.value })} />
+              </label>
+              <label>
+                Font size
+                <input type="range" min="12" max="160" value={selectedText.size} onChange={(event) => updateSelectedText({ size: Number(event.target.value) })} />
+                <b>{selectedText.size}px</b>
+              </label>
+              <label className="caption-weight-toggle">
+                <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
+              </label>
+              <label>
+                Outline color
+                <input type="color" aria-label="Text outline color" value={selectedText.strokeColor} onChange={(event) => updateSelectedText({ strokeColor: event.target.value })} />
+              </label>
+              <label>
+                Outline width
+                <input type="range" aria-label="Text outline width" min="0" max="10" step="0.5" value={selectedText.strokeWidth} onChange={(event) => updateSelectedText({ strokeWidth: Number(event.target.value) })} />
+                <b>{selectedText.strokeWidth}px</b>
+              </label>
+              <label>
+                Rotate
+                <input type="range" min="-180" max="180" value={selectedText.rotation} onChange={(event) => updateSelectedText({ rotation: Number(event.target.value) })} />
+              </label>
+              <label>
+                Scale
+                <input type="range" min="0.3" max="3" step="0.1" value={selectedText.scale} onChange={(event) => updateSelectedText({ scale: Number(event.target.value) })} />
+              </label>
+              <button className="caption-remove" onClick={() => removeTextLayer(selectedText.id)}>Delete text</button>
+            </div>
+          </div>
+        )}
+        <div>
+          <label>
+            Background{" "}
+            <input
+              type="color"
+              value={background}
+              onChange={(event) => {
+                setBackground(event.target.value);
+                setTransparentBackground(false);
+              }}
+            />
+          </label>
+          <label>
+            Border{" "}
+            <input
+              type="color"
+              value={borderColor}
+              onChange={(event) => setBorderColor(event.target.value)}
+            />
+          </label>
+          <label>
+            Width{" "}
+            <input
+              type="number"
+              min="0"
+              max="80"
+              value={borderWidth}
+              onChange={(event) => setBorderWidth(Number(event.target.value))}
+            />
+          </label>
+        </div>
+      </div>
+      <div className="background-tools">
+        <div className="tolerance-row">
+          <span>Solid background tolerance</span>
+          <input
+            type="range"
+            min="5"
+            max="80"
+            value={backgroundTolerance}
+            onChange={(event) => setBackgroundTolerance(Number(event.target.value))}
+          />
+          <b>{backgroundTolerance}</b>
+        </div>
+        <label className="transparent-check">
+          <input
+            type="checkbox"
+            checked={transparentBackground}
+            onChange={(event) => {
+              setTransparentBackground(event.target.checked);
+              if (event.target.checked) setFormat("image/png");
+            }}
+          />{" "}
+          Transparent PNG
+        </label>
+        <button onClick={removeSolidBackground} disabled={!url}>Remove solid background</button>
+        <button onClick={() => originalUrl && setUrl(originalUrl)} disabled={!originalUrl}>Restore original</button>
+        <small>Pure-color removal samples the top-left background. Use PNG for transparency.</small>
+      </div>
+      <button className="reset-all" onClick={resetEdits}>Reset all edits</button>
+    </>
+  );
+  const adjustmentsModule = (
+    <section className="preview-adjustments" aria-label="Light color and filter controls">
+      <Step
+        n="03"
+        title="Light, color & filters"
+        sub="Adjust the image below the preview"
+      />
+      <div className="adjustments">
+        <RangeControl label="Brightness" min={0} max={200} value={adjust.brightness} onChange={(value) => setAdjust({ ...adjust, brightness: value })} />
+        <RangeControl label="Contrast" min={0} max={200} value={adjust.contrast} onChange={(value) => setAdjust({ ...adjust, contrast: value })} />
+        <RangeControl label="Saturation" min={0} max={200} value={adjust.saturation} onChange={(value) => setAdjust({ ...adjust, saturation: value })} />
+        <RangeControl label="Hue" min={-180} max={180} value={adjust.hue} onChange={(value) => setAdjust({ ...adjust, hue: value })} />
+        <RangeControl label="Blur" min={0} max={16} value={adjust.blur} onChange={(value) => setAdjust({ ...adjust, blur: value })} />
+      </div>
+      <div className="filter-presets">
+        <button className={adjust.grayscale ? "active" : ""} onClick={() => setAdjust({ ...adjust, grayscale: adjust.grayscale ? 0 : 100 })}>B&amp;W</button>
+        <button className={adjust.sepia ? "active" : ""} onClick={() => setAdjust({ ...adjust, sepia: adjust.sepia ? 0 : 100 })}>Sepia</button>
+        <button className={adjust.invert ? "active" : ""} onClick={() => setAdjust({ ...adjust, invert: adjust.invert ? 0 : 100 })}>Invert</button>
+        <button onClick={() => setAdjust({ brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0, sepia: 0, invert: 0 })}>Clear filters</button>
+      </div>
+    </section>
+  );
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -1771,7 +1962,12 @@ function App() {
                 <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
                 {(url || imageLayers.length > 0 || collageImages.length > 0) && (
                   <div className="layer-list">
-                    {url && <button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button>}
+                    {url && (
+                      <div className="layer-row">
+                        <button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button>
+                        <button className="layer-delete" type="button" aria-label="Delete main image" onClick={removeBaseImage}>×</button>
+                      </div>
+                    )}
                     {imageLayers.map((layer, index) => (
                       <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>
                     ))}
@@ -1811,8 +2007,9 @@ function App() {
                 <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
             </div>
+            {textModule}
             <Step
-              n="02"
+              n="04"
               title="Privacy cover"
               sub="Place mosaic or a cute sticker exactly where needed"
             />
@@ -1904,101 +2101,11 @@ function App() {
                 exact spot you want to cover in the preview.
               </small>
             </div>
-            <Step
-              n="03"
-              title="Light, color & filters"
-              sub="Non-destructive browser adjustments"
-            />
-            <div className="adjustments">
-              <RangeControl
-                label="Brightness"
-                min={0}
-                max={200}
-                value={adjust.brightness}
-                onChange={(value) =>
-                  setAdjust({ ...adjust, brightness: value })
-                }
-              />
-              <RangeControl
-                label="Contrast"
-                min={0}
-                max={200}
-                value={adjust.contrast}
-                onChange={(value) => setAdjust({ ...adjust, contrast: value })}
-              />
-              <RangeControl
-                label="Saturation"
-                min={0}
-                max={200}
-                value={adjust.saturation}
-                onChange={(value) =>
-                  setAdjust({ ...adjust, saturation: value })
-                }
-              />
-              <RangeControl
-                label="Hue"
-                min={-180}
-                max={180}
-                value={adjust.hue}
-                onChange={(value) => setAdjust({ ...adjust, hue: value })}
-              />
-              <RangeControl
-                label="Blur"
-                min={0}
-                max={16}
-                value={adjust.blur}
-                onChange={(value) => setAdjust({ ...adjust, blur: value })}
-              />
-            </div>
-            <div className="filter-presets">
-              <button
-                className={adjust.grayscale ? "active" : ""}
-                onClick={() =>
-                  setAdjust({
-                    ...adjust,
-                    grayscale: adjust.grayscale ? 0 : 100,
-                  })
-                }
-              >
-                B&W
-              </button>
-              <button
-                className={adjust.sepia ? "active" : ""}
-                onClick={() =>
-                  setAdjust({ ...adjust, sepia: adjust.sepia ? 0 : 100 })
-                }
-              >
-                Sepia
-              </button>
-              <button
-                className={adjust.invert ? "active" : ""}
-                onClick={() =>
-                  setAdjust({ ...adjust, invert: adjust.invert ? 0 : 100 })
-                }
-              >
-                Invert
-              </button>
-              <button
-                onClick={() =>
-                  setAdjust({
-                    brightness: 100,
-                    contrast: 100,
-                    saturation: 100,
-                    hue: 0,
-                    blur: 0,
-                    grayscale: 0,
-                    sepia: 0,
-                    invert: 0,
-                  })
-                }
-              >
-                Clear filters
-              </button>
-            </div>
+            <div className="legacy-text-module" aria-hidden="true">
             <Step
               n="04"
-              title="Text, watermark & canvas"
-              sub="Add a caption, background, or border"
+              title="Privacy cover"
+              sub="Place mosaic or a cute sticker exactly where needed"
             />
             <div className="caption-module">
               <button
@@ -2154,6 +2261,7 @@ function App() {
             <button className="reset-all" onClick={resetEdits}>
               Reset all edits
             </button>
+            </div>
             <Step
               n="05"
               title="Product details"
@@ -2336,9 +2444,6 @@ function App() {
                   {sizeSelected ? `${preset.group} · ${preset.en}` : "Original image · no size selected"}
                 </strong>
               </div>
-              <b>
-                {sizeSelected ? `${output.width} × ${output.height} px` : "Original"}
-              </b>
             </div>
             <div className="preview-workarea">
             <aside className="preview-size-tools" aria-label="Canvas size selection">
@@ -2354,6 +2459,12 @@ function App() {
                       className={selected ? "batch-option active" : "batch-option"}
                       aria-pressed={selected}
                       onClick={() => toggleBatchPreset(item)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return;
+                        event.preventDefault();
+                        if (selected) choosePreset(item);
+                        else toggleBatchPreset(item);
+                      }}
                     >
                       <b>{item.group}</b>
                       <span>{item.en}</span>
@@ -2364,12 +2475,11 @@ function App() {
                 <button
                   type="button"
                   className={sizeSelected && preset.id === "custom" ? "batch-option active" : "batch-option"}
-                  onClick={() => {
-                    if (sizeSelected && preset.id === "custom") setSizeSelected(false);
-                    else {
-                      setBatchPresetIds([]);
-                      choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
-                    }
+                  onClick={() => sizeSelected && preset.id === "custom" ? setSizeSelected(false) : chooseCustomSize()}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    chooseCustomSize();
                   }}
                 >
                   <b>Custom</b>
@@ -2379,9 +2489,9 @@ function App() {
               </div>
               {preset.id === "custom" && (
                 <div className="batch-custom-size">
-                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} /></label>
+                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomSize(); }} /></label>
                   <b>×</b>
-                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} /></label>
+                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomSize(); }} /></label>
                 </div>
               )}
               <span className="preview-size-count">{batchPresetIds.length} size{batchPresetIds.length === 1 ? "" : "s"} selected</span>
@@ -2395,7 +2505,9 @@ function App() {
                 backgroundImage:
                   expandMode === "gradient"
                     ? `linear-gradient(135deg, ${background}, #1e293b)`
-                    : undefined,
+                    : transparentBackground
+                      ? undefined
+                      : "none",
               }}
               onPointerDownCapture={(event) => {
                 if (editingTextId === null) return;
@@ -2709,6 +2821,7 @@ function App() {
               ) : (
                 <label className="empty stage-upload" onPointerDown={(event) => event.stopPropagation()}>
                   <input className="stage-upload-input" type="file" accept="image/*" aria-label="Upload main image in preview" onPointerDown={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
+                  {shape !== "original" && <div className={`shape-preview-outline ${shape}`} aria-label={`${shape} crop preview`} style={shapePreviewStyle(shape, shapeScale, polygonPoints)} />}
                   <b>▧</b>
                   <strong>Click here to upload your main image</strong>
                   <small>Click anywhere in this preview to browse</small>
@@ -2722,10 +2835,10 @@ function App() {
                 <div className="shape-grid">
                   {shapes.map((item) => (
                     <button
-                      className={shape === item && item !== "original" ? "shape active" : "shape"}
+                      className={(selectedCollageImage?.shape ?? shape) === item && item !== "original" ? "shape active" : "shape"}
                       key={item}
                       type="button"
-                      onClick={() => setShape(shape === item ? "original" : item)}
+                      onClick={() => toggleShape(item)}
                     >
                       <span className={`shape-icon ${item}`}>
                         {shapeSymbol[item]}
@@ -2770,6 +2883,7 @@ function App() {
             </aside>
             </div>
             <div className="preview-canvas-tools" aria-label="Canvas controls">
+              <strong>ZOOM</strong>
               <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
               <input
                 type="range"
@@ -2784,6 +2898,10 @@ function App() {
               <button onClick={() => setActivePreviewZoom(activePreviewZoom + 0.1)} disabled={!url && !selectedCollageImage}>＋</button>
               <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
               <span></span>
+            </div>
+            <div className="preview-pixel-readout" aria-label="Output pixel dimensions">
+              <span>OUTPUT PIXELS</span>
+              <b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b>
             </div>
             {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
               <div className="preview-shape-tools" aria-label="Shape scale controls">
@@ -2830,6 +2948,7 @@ function App() {
                 </div>
               )}
             </div>
+            {adjustmentsModule}
             <div className="export">
               <label>
                 Format{" "}
@@ -2855,22 +2974,9 @@ function App() {
                   {quality}%
                 </label>
               )}
-              <button className="download" onClick={download} disabled={!url && collageImages.length === 0}>
-                Download image <b>↓</b>
+              <button className="download" onClick={downloadAll} disabled={!url && collageImages.length === 0}>
+                Download {batchPresetIds.length > 1 ? `${batchPresetIds.length} sizes` : "image"} <b>↓</b>
               </button>
-            </div>
-            <div className="platform-batch" aria-label="Batch platform export">
-              <div className="platform-batch-head">
-                <div>
-                  <strong>Batch export selected sizes</strong>
-                  <small>Choose sizes in the left canvas rail, then download the main image versions together.</small>
-                </div>
-                <span>{batchPresetIds.length} selected</span>
-              </div>
-              <button className="batch-export" type="button" onClick={downloadBatch} disabled={!url || !batchPresetIds.length || batchExporting}>
-                {batchExporting ? "Preparing downloads…" : `Download ${batchPresetIds.length ? `${batchPresetIds.length} selected sizes` : "selected sizes"} ↓`}
-              </button>
-              <small className="batch-note">Quick export applies the main image crop, background, rotation, flip, and adjustments. Use “Download image” for the complete collage, text, shape, privacy, and dimension-marker composition.</small>
             </div>
           </section>
         </section>
