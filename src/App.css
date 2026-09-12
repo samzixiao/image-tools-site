@@ -503,6 +503,7 @@
   aspect-ratio: 1 / 1;
   max-height: 470px;
   justify-self: center;
+  touch-action: none;
 }
 .stage.is-dragging {
   cursor: grabbing;
@@ -1518,6 +1519,59 @@ footer {
   background: var(--bg-panel);
   display: grid;
   gap: 12px;
+}
+.legacy-layers-module { display: none !important; }
+.preview-layers-dock {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-dark);
+}
+.preview-layers-dock .step {
+  margin: 0;
+}
+.preview-layers-dock .step strong,
+.preview-layers-dock .layer-section > b {
+  color: var(--text-on-dark);
+}
+.preview-layers-dock .step span,
+.preview-layers-dock .step small,
+.preview-layers-dock .layer-controls label,
+.preview-layers-dock .layer-order,
+.preview-layers-dock .layer-section small {
+  color: var(--text-on-dark-muted);
+}
+.preview-layers-dock .layers-panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.preview-layers-dock .layer-section > button,
+.preview-layers-dock .layer-controls button,
+.preview-layers-dock .collage-templates button,
+.preview-layers-dock .layer-list button {
+  border-color: var(--border-dark);
+  background: var(--bg-workspace-soft);
+  color: var(--text-on-dark-muted);
+}
+.preview-layers-dock .layer-section > button:hover,
+.preview-layers-dock .layer-controls button:hover,
+.preview-layers-dock .collage-templates button:hover,
+.preview-layers-dock .layer-list button:hover {
+  border-color: var(--border-dark-strong);
+  color: var(--text-on-dark);
+}
+.preview-layers-dock .layer-list button.active,
+.preview-layers-dock .collage-templates button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.preview-layers-dock select {
+  border-color: var(--border-dark);
+  background: var(--bg-workspace-soft);
+  color: var(--text-on-dark);
 }
 .layer-section { display: grid; gap: 6px; }
 .layer-section > b {
@@ -2825,8 +2879,8 @@ footer {
   max-width: 100%;
   max-height: 100%;
   object-position: center;
-  transition: transform 0.2s ease;
   transform-origin: center;
+  will-change: transform, filter;
 }
 .preview-image.ellipse,
 .expanded-background.ellipse {
@@ -2900,5 +2954,4 @@ footer {
 }
 .stage > img {
   object-position: center;
-  transition: transform 0.2s ease;
 }

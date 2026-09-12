@@ -210,6 +210,16 @@ function shapePreviewStyle(shape: Shape, scale: number, points: Array<{ x: numbe
   if (shape === "polygon") return { clipPath: polygon(points.map(({ x, y }) => [x * 100, y * 100])) };
   return { clipPath: `inset(${50 - 50 * safeScale}% round 9%)` };
 }
+function centeredCropForAspect(width: number, height: number, targetAspect: number) {
+  if (!width || !height) return null;
+  const sourceAspect = width / height;
+  if (sourceAspect > targetAspect) {
+    const cropWidth = targetAspect / sourceAspect;
+    return { x: (1 - cropWidth) / 2, y: 0, width: cropWidth, height: 1 };
+  }
+  const cropHeight = sourceAspect / targetAspect;
+  return { x: 0, y: (1 - cropHeight) / 2, width: 1, height: cropHeight };
+}
 const privacyStickers = [
   "mosaic",
   "🕶️",
@@ -400,6 +410,7 @@ function App() {
   const fileInput = useRef<HTMLInputElement>(null),
     layerInput = useRef<HTMLInputElement>(null),
     privacyInput = useRef<HTMLInputElement>(null);
+  const cropAspectRef = useRef(1);
   const previewSelectionPress = useRef<{
     kind: "layer" | "collage" | "cover";
     id: number;
@@ -444,22 +455,19 @@ function App() {
           ),
         };
 
+  cropAspectRef.current = aspect;
+
+  // The image should be decoded only when its file changes. Preset changes crop synchronously in choosePreset.
   useEffect(() => {
     if (!url) return;
     const image = new Image();
     image.onload = () => {
       setNatural({ width: image.naturalWidth, height: image.naturalHeight });
-      const ratio = image.naturalWidth / image.naturalHeight;
-      if (ratio > aspect) {
-        const width = aspect / ratio;
-        setCrop({ x: (1 - width) / 2, y: 0, width, height: 1 });
-      } else {
-        const height = ratio / aspect;
-        setCrop({ x: 0, y: (1 - height) / 2, width: 1, height });
-      }
+      const nextCrop = centeredCropForAspect(image.naturalWidth, image.naturalHeight, cropAspectRef.current);
+      if (nextCrop) setCrop(nextCrop);
     };
     image.src = url;
-  }, [url, aspect]);
+  }, [url]);
   function loadFile(file?: File) {
     if (!file || !file.type.startsWith("image/")) return;
     const nextUrl = URL.createObjectURL(file);
@@ -519,6 +527,8 @@ function App() {
     setSizeSelected(true);
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
+    const nextCrop = centeredCropForAspect(natural.width, natural.height, next.width / next.height);
+    if (nextCrop) setCrop(nextCrop);
     if (next.id !== "custom")
       setCustom({ width: next.width, height: next.height });
   }
@@ -1743,6 +1753,52 @@ function App() {
     setSelectedTextId((current) => current === id ? fallback?.id ?? null : current);
     setEditingTextId((current) => current === id ? null : current);
   }
+  const layersModule = (
+    <>
+      <Step n="01" title="Layers & collage" sub="Stack multiple image layers or build a 2–9 image collage" />
+      <div className="layers-panel">
+        <div className="layer-section">
+          <b>Image layers</b>
+          <button disabled={!url && !selectedCollageTemplate} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
+          <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
+          {(url || imageLayers.length > 0 || collageImages.length > 0) && (
+            <div className="layer-list">
+              {url && <div className="layer-row"><button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button><button className="layer-delete" type="button" aria-label="Delete main image" onClick={removeBaseImage}>×</button></div>}
+              {imageLayers.map((layer, index) => <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>)}
+              {collageImages.map((item, index) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Collage {index + 1} · {item.name}</button>)}
+            </div>
+          )}
+          {selectedImageLayer && (
+            <div className="layer-controls">
+              <label>Size <input type="range" min="8" max="90" value={selectedImageLayer.width} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, width: Number(event.target.value) } : layer))} /></label>
+              <label>Opacity <input type="range" min="10" max="100" value={selectedImageLayer.opacity} onChange={(event) => setImageLayers((current) => current.map((layer) => layer.id === selectedImageLayer.id ? { ...layer, opacity: Number(event.target.value) } : layer))} /></label>
+              <span className="layer-order">Order: <button onClick={() => reorderImageLayer(selectedImageLayer.id, "bottom")}>Bottom</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "down")}>↓</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "up")}>↑</button><button onClick={() => reorderImageLayer(selectedImageLayer.id, "top")}>Top</button></span>
+              <button onClick={() => removeImageLayer(selectedImageLayer.id)}>Delete layer</button>
+            </div>
+          )}
+          <small>Add as many images as needed. Drag a layer directly in the preview to reposition it.</small>
+        </div>
+        <div className="layer-section collage-section">
+          <b>Collage board</b>
+          <div className="collage-templates">
+            {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
+          </div>
+          {collageImages.length > 0 && <div className="layer-list">{collageImages.map((item) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Tile {item.slotIndex + 1} · {item.name}</button>)}</div>}
+          {selectedCollageImage && (
+            <div className="layer-controls">
+              <label>Tile shape
+                <select value={selectedCollageImage.shape} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: event.target.value as CollageImage["shape"] } : item))}>
+                  {shapes.filter((item): item is CollageImage["shape"] => item !== "polygon").map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
+                </select>
+              </label>
+              <button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button>
+            </div>
+          )}
+          <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
+        </div>
+      </div>
+    </>
+  );
   const textModule = (
     <>
       <Step
@@ -1945,6 +2001,7 @@ function App() {
                 event.target.value = "";
               }}
             />
+            <div className="legacy-layers-module" aria-hidden="true">
             <Step
               n="01"
               title="Layers & collage"
@@ -2001,6 +2058,7 @@ function App() {
                 )}
                 <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
+            </div>
             </div>
             {textModule}
             <Step
@@ -2924,6 +2982,9 @@ function App() {
                   <button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button>
                 </div>
                 <span>{rotation}°</span>
+              </div>
+              <div className="preview-layers-dock">
+                {layersModule}
               </div>
               {url && (
                 <button className="danger-action" type="button" onClick={removeBaseImage}>
