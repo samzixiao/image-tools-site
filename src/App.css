@@ -514,10 +514,10 @@
 }
 .shape-preview-outline {
   position: absolute;
-  z-index: 3;
+  z-index: 20;
   inset: 0;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: rgb(201 87 64 / 32%);
+  filter: drop-shadow(0 0 2px var(--accent));
   pointer-events: none;
 }
 .base-image-selection {
@@ -1938,24 +1938,63 @@ footer {
   font-weight: 500;
 }
 .preview-adjustments {
-  padding: 10px 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border-dark);
 }
-.preview-adjustments .step strong {
-  color: var(--text-on-dark);
+.adjustment-label {
+  display: grid;
+  gap: 2px;
+  white-space: nowrap;
 }
-.preview-adjustments .step small {
+.adjustment-label b {
+  color: var(--text-on-dark);
+  font: 600 9px var(--font-mono);
+  letter-spacing: .12em;
+}
+.adjustment-label small {
   color: var(--text-on-dark-muted);
+  font-size: 9px;
 }
 .preview-adjustments .adjustments {
+  margin: 0;
+  padding: 6px 8px;
   border-color: var(--border-dark);
   background: var(--bg-workspace-soft);
+}
+.compact-adjustments {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.compact-adjustments label {
+  grid-template-columns: 1fr 30px;
+  gap: 4px;
+}
+.compact-adjustments label span {
+  grid-column: 1 / -1;
+  font-size: 9px;
 }
 .preview-adjustments .adjustments label,
 .preview-adjustments .adjustments b {
   color: var(--text-on-dark-muted);
 }
 .preview-adjustments .adjustments b {
+  color: var(--text-on-dark);
+}
+.adjustments-reset {
+  border: 1px solid var(--border-dark-strong);
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+  background: var(--bg-workspace-soft);
+  color: var(--text-on-dark-muted);
+  font: 10px var(--font-mono);
+  cursor: pointer;
+}
+.adjustments-reset:hover {
+  border-color: var(--accent);
   color: var(--text-on-dark);
 }
 .preview-adjustments .filter-presets button {
@@ -2081,6 +2120,17 @@ footer {
   background: var(--accent-soft);
 }
 .preview-side-tools button:disabled { cursor: not-allowed; opacity: .35; }
+.preview-side-tools .danger-action {
+  margin-top: 6px;
+  border-color: #b84532aa;
+  color: #f07b68;
+  text-align: center;
+}
+.preview-side-tools .danger-action:hover {
+  border-color: var(--danger);
+  background: #b8453222;
+  color: #ff9a8c;
+}
 .preview-side-tools small {
   color: var(--text-on-dark-muted);
   font-size: 10px;
