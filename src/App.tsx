@@ -2534,20 +2534,6 @@ function App() {
                 setTextResizeDrag(null);
               }}
             >
-              {url && (
-                <button
-                  className="preview-remove-main"
-                  type="button"
-                  aria-label="Remove main image from preview"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    removeBaseImage();
-                  }}
-                >
-                  × Remove image
-                </button>
-              )}
               {url || selectedCollageTemplate ? (
                 <>
                   {url && (expandMode === "blur" || expandMode === "mirror") && (

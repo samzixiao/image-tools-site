@@ -50,7 +50,6 @@ for (const contract of [
   'className="preview-size-tools"',
   'className="preview-side-tools"',
   'className="preview-shape-selector"',
-  'className="preview-remove-main"',
   'Click here to upload your main image',
   'Click anywhere in this preview to browse',
   'mosaic-mask-preview',
