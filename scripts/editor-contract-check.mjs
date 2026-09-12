@@ -39,6 +39,15 @@ for (const contract of [
   'const activeShapeScale = selectedCollageImage?.shapeScale ?? shapeScale;',
   '(selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")',
   'className="preview-shape-tools"',
+  'function shapePreviewStyle(shape: Shape, scale: number, points:',
+  'className={`shape-preview-outline ${shape}`}',
+  'className="base-image-selection"',
+  '[selectedBaseImage, setSelectedBaseImage] = useState(false)',
+  'function toggleBaseImage()',
+  'className="collage-delete-handle"',
+  'aria-label={`Delete collage tile ${index + 1}`}',
+  'className="preview-workarea"',
+  'className="preview-side-tools"',
   'className={`collage-shape-frame ${item.shape}`}',
   'style={collageShapeStyle(item.shape, slot, item.shapeScale)}',
   'const value = Math.min(1.5, Math.max(0.35, next));',
@@ -83,6 +92,8 @@ for (const contract of [
 }
 
 assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
+assert.ok(!source.includes('title="Choose a size"'), "The duplicate left size panel must stay removed");
+assert.ok(!source.includes('className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`'), "The stage must not be clipped or scaled together with the selected shape");
 assert.ok(!source.includes("strokeText"), "Text outlines must not use inward canvas strokeText rendering");
 assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");
 assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== layer.id'), "Text controls must not appear from selection alone");

@@ -194,6 +194,22 @@ function collageShapeStyle(shape: CollageImage["shape"], slot: CollageSlot, scal
   const insetY = Math.max(0, (1 - squareHeight) * 50);
   return { clipPath: `inset(${insetY}% ${insetX}% round 9%)` };
 }
+const heartMask = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E\")";
+function shapePreviewStyle(shape: Shape, scale: number, points: Array<{ x: number; y: number }>): CSSProperties {
+  if (shape === "original") return {};
+  const safeScale = Math.max(0.35, Math.min(1.5, scale));
+  const point = (x: number, y: number) => `${50 + (x - 50) * safeScale}% ${50 + (y - 50) * safeScale}%`;
+  const polygon = (values: Array<[number, number]>) => `polygon(${values.map(([x, y]) => point(x, y)).join(", ")})`;
+  if (shape === "circle") return { clipPath: `circle(${50 * safeScale}% at 50% 50%)` };
+  if (shape === "ellipse") return { clipPath: `ellipse(${48 * safeScale}% ${34 * safeScale}% at 50% 50%)` };
+  if (shape === "heart") return { clipPath: "none", WebkitMaskImage: heartMask, maskImage: heartMask, WebkitMaskSize: `${100 * safeScale}% ${100 * safeScale}%`, maskSize: `${100 * safeScale}% ${100 * safeScale}%`, WebkitMaskPosition: "center", maskPosition: "center", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat" };
+  if (shape === "star") return { clipPath: polygon([[50, 2], [61, 35], [98, 35], [68, 56], [79, 92], [50, 70], [21, 92], [32, 56], [2, 35], [39, 35]]) };
+  if (shape === "hexagon") return { clipPath: polygon([[50, 4], [92, 25], [92, 75], [50, 98], [8, 75], [8, 25]]) };
+  if (shape === "triangle") return { clipPath: polygon([[50, 0], [100, 100], [0, 100]]) };
+  if (shape === "badge") return { clipPath: polygon([[50, 0], [58, 12], [70, 4], [72, 18], [86, 15], [82, 29], [96, 34], [84, 43], [99, 50], [84, 57], [96, 66], [82, 71], [86, 85], [72, 82], [70, 96], [58, 88], [50, 100], [42, 88], [30, 96], [28, 82], [14, 85], [18, 71], [4, 66], [16, 57], [1, 50], [16, 43], [4, 34], [18, 29], [14, 15], [28, 18], [30, 4], [42, 12]]) };
+  if (shape === "polygon") return { clipPath: polygon(points.map(({ x, y }) => [x * 100, y * 100])) };
+  return { clipPath: `inset(${50 - 50 * safeScale}% round 9%)` };
+}
 const privacyStickers = [
   "mosaic",
   "🕶️",
@@ -241,7 +257,7 @@ function App() {
   const [preset, setPreset] = useState(requestedPreset),
     [custom, setCustom] = useState({ width: 1080, height: 1080 }),
     [sizeSelected, setSizeSelected] = useState(hasRequestedPreset);
-  const [batchPresetIds, setBatchPresetIds] = useState<string[]>([]),
+  const [batchPresetIds, setBatchPresetIds] = useState<string[]>(hasRequestedPreset ? [requestedPreset.id] : []),
     [batchExporting, setBatchExporting] = useState(false);
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
@@ -284,6 +300,7 @@ function App() {
   const [editingTextId, setEditingTextId] = useState<number | null>(null);
   const [imageLayers, setImageLayers] = useState<ImageLayer[]>([]),
     [selectedImageLayerId, setSelectedImageLayerId] = useState<number | null>(null),
+    [selectedBaseImage, setSelectedBaseImage] = useState(false),
     [collageImages, setCollageImages] = useState<CollageImage[]>([]),
     [selectedCollageImageId, setSelectedCollageImageId] = useState<number | null>(null),
     [collageTemplateId, setCollageTemplateId] = useState<string | null>(null),
@@ -449,6 +466,7 @@ function App() {
     setFileName(file.name);
     setUrl(nextUrl);
     setOriginalUrl(nextUrl);
+    setSelectedBaseImage(false);
     setImageOffset({ x: 0, y: 0 });
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
@@ -503,6 +521,25 @@ function App() {
     setPresetFrameScale(1);
     if (next.id !== "custom")
       setCustom({ width: next.width, height: next.height });
+  }
+  function toggleBatchPreset(next: Preset) {
+    const selected = batchPresetIds.includes(next.id);
+    const nextIds = selected
+      ? batchPresetIds.filter((id) => id !== next.id)
+      : [...batchPresetIds, next.id];
+    setBatchPresetIds(nextIds);
+    if (!selected) {
+      if (!sizeSelected || batchPresetIds.length === 0) choosePreset(next);
+      return;
+    }
+    if (nextIds.length === 0) {
+      setSizeSelected(false);
+      return;
+    }
+    if (preset.id === next.id) {
+      const fallback = presets.find((item) => item.id === nextIds[0]);
+      if (fallback) choosePreset(fallback);
+    }
   }
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!url && !collageTemplateId) return;
@@ -792,6 +829,7 @@ function App() {
   }
   function beginStickerDrag(event: PointerEvent<HTMLSpanElement>, cover: PrivacyCover) {
     event.stopPropagation();
+    setSelectedBaseImage(false);
     previewSelectionPress.current = {
       kind: "cover",
       id: cover.id,
@@ -814,6 +852,7 @@ function App() {
   }
   function beginLayerDrag(event: PointerEvent<HTMLDivElement>, layer: ImageLayer) {
     event.stopPropagation();
+    setSelectedBaseImage(false);
     event.currentTarget.setPointerCapture(event.pointerId);
     previewSelectionPress.current = {
       kind: "layer",
@@ -839,6 +878,7 @@ function App() {
     if (placingSticker && privacySticker) return;
     event.preventDefault();
     event.stopPropagation();
+    setSelectedBaseImage(false);
     previewSelectionPress.current = {
       kind: "collage",
       id: item.id,
@@ -868,9 +908,11 @@ function App() {
       if (kind === "layer") {
         setSelectedImageLayerId(id);
         setSelectedCollageImageId(null);
+        setSelectedBaseImage(false);
       } else if (kind === "collage") {
         setSelectedCollageImageId(id);
         setSelectedImageLayerId(null);
+        setSelectedBaseImage(false);
       } else {
         const cover = privacyCovers.find((item) => item.id === id);
         if (cover) setStickerSize(cover.size);
@@ -881,9 +923,11 @@ function App() {
     if (kind === "layer") {
       setSelectedImageLayerId(press?.wasSelected ? null : id);
       setSelectedCollageImageId(null);
+      setSelectedBaseImage(false);
     } else if (kind === "collage") {
       setSelectedCollageImageId(press?.wasSelected ? null : id);
       setSelectedImageLayerId(null);
+      setSelectedBaseImage(false);
     } else {
       const cover = privacyCovers.find((item) => item.id === id);
       if (cover && !press?.wasSelected) setStickerSize(cover.size);
@@ -896,6 +940,7 @@ function App() {
     setSelectedTextId(null);
     setEditingTextId(null);
     setSelectedMarkerId(marker.id);
+    setSelectedBaseImage(false);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
   function beginMarkerResize(event: PointerEvent<HTMLButtonElement>, marker: DimensionMarker) {
@@ -904,6 +949,7 @@ function App() {
     setSelectedTextId(null);
     setEditingTextId(null);
     setSelectedMarkerId(marker.id);
+    setSelectedBaseImage(false);
     setMarkerResizeDrag({ id: marker.id, x: event.clientX, y: event.clientY, length: marker.length, rotation: marker.rotation });
   }
   function beginMarkerLabelDrag(event: PointerEvent<HTMLDivElement>, marker: DimensionMarker) {
@@ -912,6 +958,7 @@ function App() {
     setSelectedTextId(null);
     setEditingTextId(null);
     setSelectedMarkerId(marker.id);
+    setSelectedBaseImage(false);
     setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
   function beginTextDrag(event: PointerEvent<HTMLDivElement>, layer: TextLayer) {
@@ -924,6 +971,7 @@ function App() {
     setSelectedImageLayerId(null);
     setSelectedCoverId(null);
     setSelectedMarkerId(null);
+    setSelectedBaseImage(false);
     setTextDrag({ id: layer.id, x: event.clientX, y: event.clientY, position: layer.position });
   }
   function beginTextResize(event: PointerEvent<HTMLButtonElement>, layer: TextLayer) {
@@ -946,6 +994,7 @@ function App() {
     setShape("original");
     setShapeScale(1);
     setBatchPresetIds([]);
+    setSelectedBaseImage(false);
     setSizeSelected(false);
     setAdjust({
       brightness: 100,
@@ -1581,6 +1630,18 @@ function App() {
     setFileName("");
     setNatural({ width: 0, height: 0 });
     setSizeSelected(false);
+    setSelectedBaseImage(false);
+  }
+  function toggleBaseImage() {
+    const next = !selectedBaseImage;
+    setSelectedBaseImage(next);
+    if (next) {
+      setSelectedImageLayerId(null);
+      setSelectedCollageImageId(null);
+      setSelectedTextId(null);
+      setSelectedCoverId(null);
+      setSelectedMarkerId(null);
+    }
   }
   function reorderImageLayer(id: number, target: "top" | "bottom" | "up" | "down") {
     setImageLayers((current) => {
@@ -1609,13 +1670,16 @@ function App() {
   function toggleImageLayer(id: number) {
     setSelectedImageLayerId((current) => current === id ? null : id);
     setSelectedCollageImageId(null);
+    setSelectedBaseImage(false);
   }
   function toggleCollageImage(id: number) {
     setSelectedCollageImageId((current) => current === id ? null : id);
     setSelectedImageLayerId(null);
+    setSelectedBaseImage(false);
   }
   function togglePrivacyCover(cover: PrivacyCover) {
     setSelectedCoverId((current) => current === cover.id ? null : cover.id);
+    setSelectedBaseImage(false);
     if (selectedCoverId !== cover.id) setStickerSize(cover.size);
   }
   function removePrivacyCover(id: number) {
@@ -1720,79 +1784,6 @@ function App() {
             <button className="clear-main-image" disabled={!url} onClick={removeBaseImage}>× Remove main image</button>
             <Step
               n="02"
-              title="Choose a size"
-              sub="Pick a platform or enter your own"
-            />
-            <div className="presets">
-              {presets.map((item) => (
-                <button
-                  className={sizeSelected && preset.id === item.id ? "preset active" : "preset"}
-                  key={item.id}
-                  onClick={() => {
-                    if (sizeSelected && preset.id === item.id) setSizeSelected(false);
-                    else choosePreset(item);
-                  }}
-                >
-                  <b>{item.group}</b>
-                  <span>{item.name}</span>
-                  <small>
-                    {item.width} × {item.height}
-                  </small>
-                </button>
-              ))}
-              <button
-                className={sizeSelected && preset.id === "custom" ? "preset active" : "preset"}
-                onClick={() =>
-                  sizeSelected && preset.id === "custom"
-                    ? setSizeSelected(false)
-                    : choosePreset({
-                        id: "custom",
-                        group: "Custom",
-                        name: "自定义尺寸",
-                        en: "Custom size",
-                        width: custom.width,
-                        height: custom.height,
-                      })
-                }
-              >
-                <b>Custom</b>
-                <span>自定义尺寸</span>
-                <small>Enter your size</small>
-              </button>
-            </div>
-            {preset.id === "custom" && (
-              <div className="custom">
-                <label>
-                  Width
-                  <input
-                    type="number"
-                    value={custom.width}
-                    onChange={(event) =>
-                      setCustom({
-                        ...custom,
-                        width: Number(event.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <b>×</b>
-                <label>
-                  Height
-                  <input
-                    type="number"
-                    value={custom.height}
-                    onChange={(event) =>
-                      setCustom({
-                        ...custom,
-                        height: Number(event.target.value),
-                      })
-                    }
-                  />
-                </label>
-              </div>
-            )}
-            <Step
-              n="03"
               title="Shape crop"
               sub="Choose a profile, badge, sticker, or DIY polygon"
             />
@@ -1836,7 +1827,7 @@ function App() {
               </div>
             )}
             <Step
-              n="04"
+              n="03"
               title="Layers & collage"
               sub="Stack multiple image layers or build a 2–9 image collage"
             />
@@ -1847,7 +1838,7 @@ function App() {
                 <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
                 {(url || imageLayers.length > 0 || collageImages.length > 0) && (
                   <div className="layer-list">
-                    {url && <button className={selectedImageLayerId === null && selectedCollageImageId === null ? "active" : ""} onClick={() => { setSelectedImageLayerId(null); setSelectedCollageImageId(null); }}>Base image · {fileName || "Image"}</button>}
+                    {url && <button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button>}
                     {imageLayers.map((layer, index) => (
                       <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>
                     ))}
@@ -1867,7 +1858,7 @@ function App() {
               <div className="layer-section collage-section">
                 <b>Collage board</b>
                 <div className="collage-templates">
-                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
+                  {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
                 </div>
                 {collageImages.length > 0 && (
                   <div className="layer-list">
@@ -1888,7 +1879,7 @@ function App() {
               </div>
             </div>
             <Step
-              n="05"
+              n="04"
               title="Smart canvas extend"
               sub="Keep the person; fill the empty background"
             />
@@ -1927,7 +1918,7 @@ function App() {
               </small>
             </div>
             <Step
-              n="06"
+              n="05"
               title="Privacy cover"
               sub="Place mosaic or a cute sticker exactly where needed"
             />
@@ -2020,7 +2011,7 @@ function App() {
               </small>
             </div>
             <Step
-              n="07"
+              n="06"
               title="Light, color & filters"
               sub="Non-destructive browser adjustments"
             />
@@ -2111,7 +2102,7 @@ function App() {
               </button>
             </div>
             <Step
-              n="08"
+              n="07"
               title="Text, watermark & canvas"
               sub="Add a caption, background, or border"
             />
@@ -2270,7 +2261,7 @@ function App() {
               Reset all edits
             </button>
             <Step
-              n="09"
+              n="08"
               title="Product details"
               sub="Add movable bilingual dimension markers and a text layer"
             />
@@ -2424,7 +2415,7 @@ function App() {
               </small>
             </div>
             <Step
-              n="10"
+              n="09"
               title="Fit & export"
               sub="Choose crop or keep the full image"
             />
@@ -2455,14 +2446,12 @@ function App() {
                 {sizeSelected ? `${output.width} × ${output.height} px` : "Original"}
               </b>
             </div>
+            <div className="preview-workarea">
             <div
-              className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`}
+              className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"}
               style={{
                 aspectRatio: "1 / 1",
                 maxWidth: "470px",
-                transform: shape !== "original" && !selectedCollageImage ? `scale(${shapeScale})` : undefined,
-                transformOrigin: "center center",
-                clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
                 backgroundColor: transparentBackground ? undefined : background,
                 backgroundImage:
                   expandMode === "gradient"
@@ -2500,25 +2489,25 @@ function App() {
                     <img
                       src={url}
                       alt="Extended background"
-                      className={`expanded-background ${expandMode} ${shape}`}
+                      className={`expanded-background ${expandMode}`}
                       style={{
                         filter: `blur(${Math.max(3, expandStrength / 2)}px) brightness(82%) saturate(110%)`,
                       }}
                     />
                   )}
-                  {url && <img
-                    src={url}
-                    alt="Preview"
-                    className={`preview-image ${shape}`}
-                    style={{
-                      ...previewStyle,
-                      clipPath: shape === "polygon" ? `polygon(${polygonPoints.map((point) => `${point.x * 100}% ${point.y * 100}%`).join(", ")})` : undefined,
-                    }}
-                  />}
+                  {url && <img src={url} alt="Preview" className="preview-image" style={previewStyle} />}
+                  {url && shape !== "original" && (
+                    <div
+                      className={`shape-preview-outline ${shape}`}
+                      aria-label={`${shape} crop preview`}
+                      style={shapePreviewStyle(shape, shapeScale, polygonPoints)}
+                    />
+                  )}
+                  {url && selectedBaseImage && <div className="base-image-selection" aria-label="Selected main image" />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <><button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button><button className="collage-delete-handle" aria-label={`Delete collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeCollageImage(item.id); }}>×</button></>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2777,6 +2766,16 @@ function App() {
                 </label>
               )}
             </div>
+            <aside className="preview-side-tools" aria-label="Quick preview actions">
+              <b>QUICK ACTIONS</b>
+              <button type="button" onClick={() => fileInput.current?.click()}>Upload main image</button>
+              <button type="button" className={mode === "crop" ? "active" : ""} onClick={() => setMode("crop")} disabled={!url}>Crop to fill</button>
+              <button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode("fit")} disabled={!url}>Fit full image</button>
+              <button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>
+              <button type="button" onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center image</button>
+              <small>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} selected` : selectedBaseImage ? "Main image selected" : "Select an image layer in the preview or list"}</small>
+            </aside>
+            </div>
             <div className="preview-canvas-tools" aria-label="Canvas controls">
               <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
               <input
@@ -2792,18 +2791,6 @@ function App() {
               <button onClick={() => setActivePreviewZoom(activePreviewZoom + 0.1)} disabled={!url && !selectedCollageImage}>＋</button>
               <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
               <span></span>
-              <button
-                onClick={resetEdits}
-                disabled={!url}
-              >
-                Reset view
-              </button>
-              <button
-                onClick={() => setImageOffset({ x: 0, y: 0 })}
-                disabled={!url}
-              >
-                Center image
-              </button>
             </div>
             {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
               <div className="preview-shape-tools" aria-label="Shape scale controls">
@@ -2896,8 +2883,7 @@ function App() {
                       type="button"
                       className={selected ? "batch-option active" : "batch-option"}
                       aria-pressed={selected}
-                      disabled={!url}
-                      onClick={() => setBatchPresetIds((current) => selected ? current.filter((id) => id !== item.id) : [...current, item.id])}
+                      onClick={() => toggleBatchPreset(item)}
                     >
                       <b>{item.group}</b>
                       <span>{item.en}</span>
@@ -2905,7 +2891,26 @@ function App() {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  className={sizeSelected && preset.id === "custom" ? "batch-option active" : "batch-option"}
+                  onClick={() => {
+                    if (sizeSelected && preset.id === "custom") setSizeSelected(false);
+                    else choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
+                  }}
+                >
+                  <b>Custom</b>
+                  <span>Custom canvas</span>
+                  <small>Set exact pixels below</small>
+                </button>
               </div>
+              {preset.id === "custom" && (
+                <div className="batch-custom-size">
+                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} /></label>
+                  <b>×</b>
+                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} /></label>
+                </div>
+              )}
               <button className="batch-export" type="button" onClick={downloadBatch} disabled={!url || !batchPresetIds.length || batchExporting}>
                 {batchExporting ? "Preparing downloads…" : `Download ${batchPresetIds.length ? `${batchPresetIds.length} selected sizes` : "selected sizes"} ↓`}
               </button>
