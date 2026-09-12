@@ -518,14 +518,6 @@
   user-select: none;
   pointer-events: none;
 }
-.shape-preview-outline {
-  position: absolute;
-  z-index: 20;
-  inset: 0;
-  background: rgb(201 87 64 / 32%);
-  filter: drop-shadow(0 0 2px var(--accent));
-  pointer-events: none;
-}
 .base-image-selection {
   position: absolute;
   z-index: 7;
@@ -2126,6 +2118,18 @@ footer {
   background: var(--accent-soft);
 }
 .preview-side-tools button:disabled { cursor: not-allowed; opacity: .35; }
+.preview-side-tools .side-readout {
+  margin-top: 4px;
+}
+.preview-side-tools .side-transform {
+  padding: 8px 0;
+}
+.preview-side-tools .side-transform button {
+  width: auto;
+  flex: 1 1 48px;
+  padding: 6px 4px;
+  text-align: center;
+}
 .preview-side-tools .danger-action {
   margin-top: 6px;
   border-color: #b84532aa;

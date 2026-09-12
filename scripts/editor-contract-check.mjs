@@ -40,7 +40,7 @@ for (const contract of [
   '(selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")',
   'className="preview-shape-tools"',
   'function shapePreviewStyle(shape: Shape, scale: number, points:',
-  'className={`shape-preview-outline ${shape}`}',
+  '...(shape === "original" ? {} : shapePreviewStyle(shape, shapeScale, polygonPoints))',
   'className="base-image-selection"',
   '[selectedBaseImage, setSelectedBaseImage] = useState(false)',
   'function toggleBaseImage()',
@@ -83,13 +83,16 @@ for (const contract of [
   'async function downloadBatch()',
   'async function downloadAll()',
   'onClick={downloadAll}',
-  'className="preview-pixel-readout"',
+  'className="preview-pixel-readout side-readout"',
   'const adjustmentsModule =',
   'className="adjustments compact-adjustments"',
   'className="danger-action"',
   'useState("#1f2120")',
   'function chooseCustomSize()',
   'function togglePreset(next: Preset)',
+  'function endPointerInteractions()',
+  'window.addEventListener("pointerup", endPointerInteractions, true);',
+  'onLostPointerCapture={endPointerInteractions}',
   'function toggleShape(nextShape: Shape)',
   'aria-pressed={selected}',
   'className="category-links"',
@@ -110,6 +113,9 @@ assert.ok(!source.includes('title="Upload your image"'), "The old left upload mo
 assert.ok(!source.includes("Smart canvas extend"), "The old Smart canvas extend module must stay removed");
 assert.ok(!source.includes('className="platform-batch"'), "Download controls must use one unified button");
 assert.ok(!source.includes("function toggleBatchPreset"), "Canvas sizes must use single-select toggle behavior");
+assert.ok(!source.includes("Crop to fill"), "The redundant Crop to fill control must not return");
+assert.ok(!source.includes("function cropZoom"), "The removed crop zoom control must not retain dead code");
+assert.ok(!source.includes("shape-preview-outline"), "Preview shapes must clip the image instead of tinting it red");
 assert.ok(!source.includes('className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`'), "The stage must not be clipped or scaled together with the selected shape");
 assert.ok(!source.includes("strokeText"), "Text outlines must not use inward canvas strokeText rendering");
 assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");

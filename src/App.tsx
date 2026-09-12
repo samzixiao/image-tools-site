@@ -539,6 +539,32 @@ function App() {
     setBatchPresetIds([]);
     choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width, height });
   }
+  function endPointerInteractions() {
+    setDrag(null);
+    setFrameDrag(null);
+    setPolygonDrag(null);
+    setStickerDrag(null);
+    setStickerResizeDrag(null);
+    setLayerDrag(null);
+    setLayerResizeDrag(null);
+    setCollageResizeDrag(null);
+    setCollageDrag(null);
+    setMarkerDrag(null);
+    setMarkerResizeDrag(null);
+    setMarkerLabelDrag(null);
+    setTextDrag(null);
+    setTextResizeDrag(null);
+  }
+  useEffect(() => {
+    window.addEventListener("pointerup", endPointerInteractions, true);
+    window.addEventListener("pointercancel", endPointerInteractions, true);
+    window.addEventListener("blur", endPointerInteractions);
+    return () => {
+      window.removeEventListener("pointerup", endPointerInteractions, true);
+      window.removeEventListener("pointercancel", endPointerInteractions, true);
+      window.removeEventListener("blur", endPointerInteractions);
+    };
+  }, []);
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!url && !collageTemplateId) return;
     if (placingSticker && privacySticker) {
@@ -590,6 +616,10 @@ function App() {
   }
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const box = event.currentTarget.getBoundingClientRect();
+    if ((drag || frameDrag || polygonDrag !== null || markerDrag || markerResizeDrag || markerLabelDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag || stickerDrag || stickerResizeDrag) && (event.buttons & 1) === 0) {
+      endPointerInteractions();
+      return;
+    }
     if (markerResizeDrag) {
       const radians = (markerResizeDrag.rotation * Math.PI) / 180;
       const projection =
@@ -783,25 +813,6 @@ function App() {
       x: Math.min(Math.max(0, drag.crop.x - dx), 1 - current.width),
       y: Math.min(Math.max(0, drag.crop.y - dy), 1 - current.height),
     }));
-  }
-  function cropZoom(delta: number) {
-    if (!url) return;
-    const sourceRatio = natural.width / natural.height,
-      width = Math.min(1, Math.max(aspect / sourceRatio, crop.width - delta)),
-      height = Math.min(1, (width / aspect) * sourceRatio);
-    setCrop({
-      width,
-      height,
-      x: Math.min(crop.x, 1 - width),
-      y: Math.min(crop.y, 1 - height),
-    });
-    if (preset.id === "custom") {
-      setCustomFrame((frame) => {
-        const scale = Math.min(0.96 / Math.max(frame.width, frame.height), Math.max(0.12 / Math.min(frame.width, frame.height), 1 - delta));
-        const nextWidth = frame.width * scale, nextHeight = frame.height * scale;
-        return { width: nextWidth, height: nextHeight, x: (1 - nextWidth) / 2, y: (1 - nextHeight) / 2 };
-      });
-    } else setPresetFrameScale((value) => Math.min(1.17, Math.max(0.35, value * (1 - delta))));
   }
   function beginFrameResize(
     event: PointerEvent<HTMLButtonElement>,
@@ -1592,6 +1603,7 @@ function App() {
     objectPosition: "center" as const,
     transform: `translate(${imageOffset.x * 100}cqw, ${imageOffset.y * 100}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
     filter: filterValue,
+    ...(shape === "original" ? {} : shapePreviewStyle(shape, shapeScale, polygonPoints)),
   };
   const selectedMarker = dimensionMarkers.find(
     (marker) => marker.id === selectedMarkerId,
@@ -1885,9 +1897,9 @@ function App() {
         <small>Preview adjustment</small>
       </div>
       <div className="adjustments compact-adjustments">
-        <RangeControl label="Brightness" min={0} max={200} value={adjust.brightness} onChange={(value) => setAdjust({ ...adjust, brightness: value })} />
-        <RangeControl label="Contrast" min={0} max={200} value={adjust.contrast} onChange={(value) => setAdjust({ ...adjust, contrast: value })} />
-        <RangeControl label="Saturation" min={0} max={200} value={adjust.saturation} onChange={(value) => setAdjust({ ...adjust, saturation: value })} />
+        <RangeControl label="Brightness" min={0} max={200} value={adjust.brightness} onChange={(value) => setAdjust((current) => ({ ...current, brightness: value }))} />
+        <RangeControl label="Contrast" min={0} max={200} value={adjust.contrast} onChange={(value) => setAdjust((current) => ({ ...current, contrast: value }))} />
+        <RangeControl label="Saturation" min={0} max={200} value={adjust.saturation} onChange={(value) => setAdjust((current) => ({ ...current, saturation: value }))} />
       </div>
       <button className="adjustments-reset" type="button" onClick={() => setAdjust({ brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0, sepia: 0, invert: 0 })}>Reset</button>
     </section>
@@ -2401,21 +2413,15 @@ function App() {
             </div>
             <Step
               n="06"
-              title="Fit & export"
-              sub="Choose crop or keep the full image"
+              title="Export image"
+              sub="Optionally keep the full image with padding"
             />
             <div className="modes">
               <button
-                className={mode === "crop" ? "active" : ""}
-                onClick={() => setMode("crop")}
-              >
-                Crop to fill<small>Best for social posts</small>
-              </button>
-              <button
                 className={mode === "fit" ? "active" : ""}
-                onClick={() => setMode("fit")}
+                onClick={() => setMode((current) => current === "fit" ? "crop" : "fit")}
               >
-                Fit with padding<small>Keep the full image</small>
+                {mode === "fit" ? "Return to crop" : "Fit with padding"}<small>{mode === "fit" ? "Use the selected canvas crop" : "Keep the full image"}</small>
               </button>
             </div>
           </aside>
@@ -2512,22 +2518,9 @@ function App() {
               }}
               onPointerDown={pointerDown}
               onPointerMove={pointerMove}
-              onPointerUp={() => {
-                setDrag(null);
-                setFrameDrag(null);
-                setPolygonDrag(null);
-                setStickerDrag(null);
-                setStickerResizeDrag(null);
-                setLayerDrag(null);
-                setLayerResizeDrag(null);
-                setCollageResizeDrag(null);
-                setCollageDrag(null);
-                setMarkerDrag(null);
-                setMarkerResizeDrag(null);
-                setMarkerLabelDrag(null);
-                setTextDrag(null);
-                setTextResizeDrag(null);
-              }}
+              onPointerUp={endPointerInteractions}
+              onPointerCancel={endPointerInteractions}
+              onLostPointerCapture={endPointerInteractions}
             >
               {url || selectedCollageTemplate ? (
                 <>
@@ -2538,17 +2531,11 @@ function App() {
                       className={`expanded-background ${expandMode}`}
                       style={{
                         filter: `blur(${Math.max(3, expandStrength / 2)}px) brightness(82%) saturate(110%)`,
+                        ...(shape === "original" ? {} : shapePreviewStyle(shape, shapeScale, polygonPoints)),
                       }}
                     />
                   )}
                   {url && <img src={url} alt="Preview" className="preview-image" style={previewStyle} />}
-                  {url && shape !== "original" && (
-                    <div
-                      className={`shape-preview-outline ${shape}`}
-                      aria-label={`${shape} crop preview`}
-                      style={shapePreviewStyle(shape, shapeScale, polygonPoints)}
-                    />
-                  )}
                   {url && selectedBaseImage && <div className="base-image-selection" aria-label="Selected main image" />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
@@ -2802,7 +2789,6 @@ function App() {
               ) : (
                 <label className="empty stage-upload" onPointerDown={(event) => event.stopPropagation()}>
                   <input className="stage-upload-input" type="file" accept="image/*" aria-label="Upload main image in preview" onPointerDown={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
-                  {shape !== "original" && <div className={`shape-preview-outline ${shape}`} aria-label={`${shape} crop preview`} style={shapePreviewStyle(shape, shapeScale, polygonPoints)} />}
                   <b>▧</b>
                   <strong>Click here to upload your main image</strong>
                   <small>Click anywhere in this preview to browse</small>
@@ -2826,10 +2812,6 @@ function App() {
               <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
               <span></span>
             </div>
-            <div className="preview-pixel-readout" aria-label="Output pixel dimensions">
-              <span>OUTPUT PIXELS</span>
-              <b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b>
-            </div>
             {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
               <div className="preview-shape-tools" aria-label="Shape scale controls">
                 <b>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} shape` : "Shape"} scale</b>
@@ -2839,23 +2821,6 @@ function App() {
                 <button onClick={() => setActiveShapeScale(1)} disabled={!canAdjustActiveShape}>{Math.round(activeShapeScale * 100)}%</button>
               </div>
             )}
-            <div className="preview-transform" aria-label="Preview controls">
-              <div>
-                <button
-                  onClick={() => setRotation((rotation + 90) % 360)}
-                  disabled={!url}
-                >
-                  ↻ Rotate
-                </button>
-                <button onClick={() => setFlipX(!flipX)} disabled={!url}>
-                  ↔ Flip H
-                </button>
-                <button onClick={() => setFlipY(!flipY)} disabled={!url}>
-                  ↕ Flip V
-                </button>
-              </div>
-              <span>{rotation}°</span>
-            </div>
             <div className="preview-foot">
               <span>
                 {url
@@ -2864,16 +2829,6 @@ function App() {
                     : `${Math.round(crop.width * natural.width)} × ${Math.round(crop.height * natural.height)} px crop area`
                   : "No image selected"}
               </span>
-              {mode === "crop" && (
-                <div>
-                  <button onClick={() => cropZoom(-0.05)} disabled={!url}>
-                    Crop −
-                  </button>
-                  <button onClick={() => cropZoom(0.05)} disabled={!url}>
-                    Crop ＋
-                  </button>
-                </div>
-              )}
             </div>
             {adjustmentsModule}
             <div className="export">
@@ -2954,11 +2909,22 @@ function App() {
               </div>
               <b>QUICK ACTIONS</b>
               <button type="button" onClick={() => fileInput.current?.click()}>Upload main image</button>
-              <button type="button" className={mode === "crop" ? "active" : ""} onClick={() => setMode("crop")} disabled={!url}>Crop to fill</button>
-              <button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode("fit")} disabled={!url}>Fit full image</button>
+              <button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode((current) => current === "fit" ? "crop" : "fit")} disabled={!url}>{mode === "fit" ? "Return to crop" : "Fit full image"}</button>
               <button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>
               <button type="button" onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center image</button>
               <small>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} selected` : selectedBaseImage ? "Main image selected" : "Select an image layer in the preview or list"}</small>
+              <div className="preview-pixel-readout side-readout" aria-label="Output pixel dimensions">
+                <span>OUTPUT PIXELS</span>
+                <b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b>
+              </div>
+              <div className="preview-transform side-transform" aria-label="Preview controls">
+                <div>
+                  <button onClick={() => setRotation((rotation + 90) % 360)} disabled={!url}>↻ Rotate</button>
+                  <button onClick={() => setFlipX(!flipX)} disabled={!url}>↔ Flip H</button>
+                  <button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button>
+                </div>
+                <span>{rotation}°</span>
+              </div>
               {url && (
                 <button className="danger-action" type="button" onClick={removeBaseImage}>
                   Remove main image
