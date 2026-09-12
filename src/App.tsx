@@ -2896,7 +2896,10 @@ function App() {
                   className={sizeSelected && preset.id === "custom" ? "batch-option active" : "batch-option"}
                   onClick={() => {
                     if (sizeSelected && preset.id === "custom") setSizeSelected(false);
-                    else choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
+                    else {
+                      setBatchPresetIds([]);
+                      choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
+                    }
                   }}
                 >
                   <b>Custom</b>
