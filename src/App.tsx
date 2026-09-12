@@ -350,8 +350,8 @@ function App() {
     y: number;
     position: DimensionMarker["labelPosition"];
   } | null>(null);
-  const [expandMode, setExpandMode] = useState<ExpandMode>("none"),
-    [expandStrength, setExpandStrength] = useState(35),
+  const [expandMode] = useState<ExpandMode>("none"),
+    [expandStrength] = useState(35),
     [privacySticker, setPrivacySticker] = useState(""),
     [stickerSize, setStickerSize] = useState(16),
     [placingSticker, setPlacingSticker] = useState(false);
@@ -1018,7 +1018,6 @@ function App() {
     setCollageTemplateId(null);
     collageUploadStartRef.current = null;
     setCollageUploadStart(null);
-    setExpandMode("none");
     setPrivacySticker("");
     setPrivacyCovers([]);
     setSelectedCoverId(null);
@@ -1749,19 +1748,6 @@ function App() {
         </section>
         <section className="workspace" id="tool">
           <aside className="controls">
-            <Step
-              n="01"
-              title="Upload your image"
-              sub="One main image · JPG, PNG, WebP · up to 50 MB"
-            />
-            <button
-              className="upload"
-              onClick={() => fileInput.current?.click()}
-            >
-              <b>↑</b>Drop an image here
-              <br />
-              <small>or click to browse</small>
-            </button>
             <input
               ref={fileInput}
               type="file"
@@ -1773,61 +1759,8 @@ function App() {
                 event.target.value = "";
               }}
             />
-            {fileName && (
-              <p className="file">
-                ✓ {fileName}{" "}
-                <span>
-                  {natural.width} × {natural.height}px
-                </span>
-              </p>
-            )}
-            <button className="clear-main-image" disabled={!url} onClick={removeBaseImage}>× Remove main image</button>
             <Step
-              n="02"
-              title="Shape crop"
-              sub="Choose a profile, badge, sticker, or DIY polygon"
-            />
-            <div className="shape-grid">
-              {shapes.map((item) => (
-                <button
-                  className={shape === item && item !== "original" ? "shape active" : "shape"}
-                  key={item}
-                  onClick={() => setShape(shape === item ? "original" : item)}
-                >
-                  <span className={`shape-icon ${item}`}>
-                    {shapeSymbol[item]}
-                  </span>
-                  <small>{item[0].toUpperCase() + item.slice(1)}</small>
-                </button>
-              ))}
-            </div>
-            {shape === "polygon" && (
-              <div className="polygon-panel">
-                <b>DIY polygon · {polygonPoints.length}/30 points</b>
-                <div>
-                  <button
-                    className={addingPolygonPoint ? "active" : ""}
-                    onClick={() => setAddingPolygonPoint(true)}
-                    disabled={polygonPoints.length >= 30}
-                  >
-                    {addingPolygonPoint ? "Click the preview…" : "＋ Add point"}
-                  </button>
-                  <button
-                    onClick={() =>
-                      {
-                        setPolygonPoints(defaultPolygonPoints);
-                        setAddingPolygonPoint(false);
-                      }
-                    }
-                  >
-                    Restore original shape
-                  </button>
-                </div>
-                <small>Drag any orange point in the preview to reshape it.</small>
-              </div>
-            )}
-            <Step
-              n="03"
+              n="01"
               title="Layers & collage"
               sub="Stack multiple image layers or build a 2–9 image collage"
             />
@@ -1879,46 +1812,7 @@ function App() {
               </div>
             </div>
             <Step
-              n="04"
-              title="Smart canvas extend"
-              sub="Keep the person; fill the empty background"
-            />
-            <div className="expand-panel">
-              <select
-                value={expandMode}
-                onChange={(event) => {
-                  setExpandMode(event.target.value as ExpandMode);
-                  if (event.target.value !== "none") setMode("fit");
-                }}
-              >
-                <option value="none">No extension</option>
-                <option value="blur">Blurred photo extension</option>
-                <option value="mirror">Mirrored photo extension</option>
-                <option value="gradient">Gradient extension</option>
-                <option value="solid">Solid-color extension</option>
-              </select>
-              {(expandMode === "blur" || expandMode === "mirror") && (
-                <label>
-                  Softness{" "}
-                  <input
-                    type="range"
-                    min="8"
-                    max="90"
-                    value={expandStrength}
-                    onChange={(event) =>
-                      setExpandStrength(Number(event.target.value))
-                    }
-                  />{" "}
-                  <b>{expandStrength}</b>
-                </label>
-              )}
-              <small>
-                Fits the original photo on top of an extended background. It
-                does not invent missing scenery.
-              </small>
-            </div>
-            <Step
-              n="05"
+              n="02"
               title="Privacy cover"
               sub="Place mosaic or a cute sticker exactly where needed"
             />
@@ -2011,7 +1905,7 @@ function App() {
               </small>
             </div>
             <Step
-              n="06"
+              n="03"
               title="Light, color & filters"
               sub="Non-destructive browser adjustments"
             />
@@ -2102,7 +1996,7 @@ function App() {
               </button>
             </div>
             <Step
-              n="07"
+              n="04"
               title="Text, watermark & canvas"
               sub="Add a caption, background, or border"
             />
@@ -2261,7 +2155,7 @@ function App() {
               Reset all edits
             </button>
             <Step
-              n="08"
+              n="05"
               title="Product details"
               sub="Add movable bilingual dimension markers and a text layer"
             />
@@ -2415,7 +2309,7 @@ function App() {
               </small>
             </div>
             <Step
-              n="09"
+              n="06"
               title="Fit & export"
               sub="Choose crop or keep the full image"
             />
@@ -2447,6 +2341,51 @@ function App() {
               </b>
             </div>
             <div className="preview-workarea">
+            <aside className="preview-size-tools" aria-label="Canvas size selection">
+              <b>CANVAS SIZES</b>
+              <small>Pick one or more output sizes. The preview remains square; the crop frame can be expanded to its edges.</small>
+              <div className="batch-options">
+                {presets.map((item) => {
+                  const selected = batchPresetIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={selected ? "batch-option active" : "batch-option"}
+                      aria-pressed={selected}
+                      onClick={() => toggleBatchPreset(item)}
+                    >
+                      <b>{item.group}</b>
+                      <span>{item.en}</span>
+                      <small>{item.width} × {item.height}</small>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className={sizeSelected && preset.id === "custom" ? "batch-option active" : "batch-option"}
+                  onClick={() => {
+                    if (sizeSelected && preset.id === "custom") setSizeSelected(false);
+                    else {
+                      setBatchPresetIds([]);
+                      choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
+                    }
+                  }}
+                >
+                  <b>Custom</b>
+                  <span>Custom canvas</span>
+                  <small>Set exact pixels below</small>
+                </button>
+              </div>
+              {preset.id === "custom" && (
+                <div className="batch-custom-size">
+                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} /></label>
+                  <b>×</b>
+                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} /></label>
+                </div>
+              )}
+              <span className="preview-size-count">{batchPresetIds.length} size{batchPresetIds.length === 1 ? "" : "s"} selected</span>
+            </aside>
             <div
               className={drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"}
               style={{
@@ -2483,6 +2422,20 @@ function App() {
                 setTextResizeDrag(null);
               }}
             >
+              {url && (
+                <button
+                  className="preview-remove-main"
+                  type="button"
+                  aria-label="Remove main image from preview"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeBaseImage();
+                  }}
+                >
+                  × Remove image
+                </button>
+              )}
               {url || selectedCollageTemplate ? (
                 <>
                   {url && (expandMode === "blur" || expandMode === "mirror") && (
@@ -2706,8 +2659,8 @@ function App() {
                       key={cover.id}
                       className={
                         cover.kind === "mosaic"
-                          ? "privacy-mask-preview mosaic-mask-preview editable"
-                          : "privacy-sticker-preview editable"
+                          ? `privacy-mask-preview mosaic-mask-preview editable${selectedCoverId === cover.id ? " selected" : ""}`
+                          : `privacy-sticker-preview editable${selectedCoverId === cover.id ? " selected" : ""}`
                       }
                       onPointerDown={(event) => beginStickerDrag(event, cover)}
                       onClick={(event) => {
@@ -2720,14 +2673,10 @@ function App() {
                         fontSize: `${cover.size}cqw`,
                         width: cover.kind === "mosaic" ? `${cover.size}%` : undefined,
                         height: cover.kind === "mosaic" ? `${cover.size}%` : undefined,
-                        outline:
-                          selectedCoverId === cover.id
-                            ? "2px solid #e86f5c"
-                            : undefined,
                       }}
                     >
                       {cover.kind === "mosaic" ? (
-                        "▦"
+                        null
                       ) : cover.kind.startsWith("blob:") ? (
                         <img src={cover.kind} alt="Custom privacy sticker" />
                       ) : (
@@ -2762,11 +2711,55 @@ function App() {
                   <input className="stage-upload-input" type="file" accept="image/*" aria-label="Upload main image in preview" onPointerDown={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { loadFile(event.target.files?.[0]); event.target.value = ""; }} />
                   <b>▧</b>
                   <strong>Click here to upload your main image</strong>
-                  <small>Or use the upload button in the left panel</small>
+                  <small>Click anywhere in this preview to browse</small>
                 </label>
               )}
             </div>
-            <aside className="preview-side-tools" aria-label="Quick preview actions">
+            <aside className="preview-side-tools" aria-label="Shape and preview actions">
+              <div className="preview-shape-selector">
+                <b>SHAPE CROP</b>
+                <small>Choose a shape. The image stays complete in the square preview; the shape is applied on export.</small>
+                <div className="shape-grid">
+                  {shapes.map((item) => (
+                    <button
+                      className={shape === item && item !== "original" ? "shape active" : "shape"}
+                      key={item}
+                      type="button"
+                      onClick={() => setShape(shape === item ? "original" : item)}
+                    >
+                      <span className={`shape-icon ${item}`}>
+                        {shapeSymbol[item]}
+                      </span>
+                      <small>{item[0].toUpperCase() + item.slice(1)}</small>
+                    </button>
+                  ))}
+                </div>
+                {shape === "polygon" && (
+                  <div className="polygon-panel">
+                    <b>DIY polygon · {polygonPoints.length}/30 points</b>
+                    <div>
+                      <button
+                        className={addingPolygonPoint ? "active" : ""}
+                        type="button"
+                        onClick={() => setAddingPolygonPoint(true)}
+                        disabled={polygonPoints.length >= 30}
+                      >
+                        {addingPolygonPoint ? "Click the preview…" : "＋ Add point"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPolygonPoints(defaultPolygonPoints);
+                          setAddingPolygonPoint(false);
+                        }}
+                      >
+                        Restore
+                      </button>
+                    </div>
+                    <small>Drag orange points in the preview to reshape it.</small>
+                  </div>
+                )}
+              </div>
               <b>QUICK ACTIONS</b>
               <button type="button" onClick={() => fileInput.current?.click()}>Upload main image</button>
               <button type="button" className={mode === "crop" ? "active" : ""} onClick={() => setMode("crop")} disabled={!url}>Crop to fill</button>
@@ -2869,51 +2862,11 @@ function App() {
             <div className="platform-batch" aria-label="Batch platform export">
               <div className="platform-batch-head">
                 <div>
-                  <strong>One image → multiple platform sizes</strong>
-                  <small>Choose any combination, then download the main image versions together.</small>
+                  <strong>Batch export selected sizes</strong>
+                  <small>Choose sizes in the left canvas rail, then download the main image versions together.</small>
                 </div>
                 <span>{batchPresetIds.length} selected</span>
               </div>
-              <div className="batch-options">
-                {presets.map((item) => {
-                  const selected = batchPresetIds.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={selected ? "batch-option active" : "batch-option"}
-                      aria-pressed={selected}
-                      onClick={() => toggleBatchPreset(item)}
-                    >
-                      <b>{item.group}</b>
-                      <span>{item.en}</span>
-                      <small>{item.width} × {item.height}</small>
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  className={sizeSelected && preset.id === "custom" ? "batch-option active" : "batch-option"}
-                  onClick={() => {
-                    if (sizeSelected && preset.id === "custom") setSizeSelected(false);
-                    else {
-                      setBatchPresetIds([]);
-                      choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width: custom.width, height: custom.height });
-                    }
-                  }}
-                >
-                  <b>Custom</b>
-                  <span>Custom canvas</span>
-                  <small>Set exact pixels below</small>
-                </button>
-              </div>
-              {preset.id === "custom" && (
-                <div className="batch-custom-size">
-                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} /></label>
-                  <b>×</b>
-                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} /></label>
-                </div>
-              )}
               <button className="batch-export" type="button" onClick={downloadBatch} disabled={!url || !batchPresetIds.length || batchExporting}>
                 {batchExporting ? "Preparing downloads…" : `Download ${batchPresetIds.length ? `${batchPresetIds.length} selected sizes` : "selected sizes"} ↓`}
               </button>

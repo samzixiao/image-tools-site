@@ -47,7 +47,13 @@ for (const contract of [
   'className="collage-delete-handle"',
   'aria-label={`Delete collage tile ${index + 1}`}',
   'className="preview-workarea"',
+  'className="preview-size-tools"',
   'className="preview-side-tools"',
+  'className="preview-shape-selector"',
+  'className="preview-remove-main"',
+  'Click here to upload your main image',
+  'Click anywhere in this preview to browse',
+  'mosaic-mask-preview',
   'className={`collage-shape-frame ${item.shape}`}',
   'style={collageShapeStyle(item.shape, slot, item.shapeScale)}',
   'const value = Math.min(1.5, Math.max(0.35, next));',
@@ -78,7 +84,7 @@ for (const contract of [
   'className="platform-batch"',
   'aria-label="Batch platform export"',
   'aria-pressed={selected}',
-  'One image → multiple platform sizes',
+  'Batch export selected sizes',
   'className="category-links"',
   'href="/ecommerce-image-tools/"',
   'href="/social-media-image-tools/"',
@@ -93,6 +99,8 @@ for (const contract of [
 
 assert.ok(!source.includes("Box width"), "Legacy text box-width control must not return");
 assert.ok(!source.includes('title="Choose a size"'), "The duplicate left size panel must stay removed");
+assert.ok(!source.includes('title="Upload your image"'), "The old left upload module must stay removed");
+assert.ok(!source.includes("Smart canvas extend"), "The old Smart canvas extend module must stay removed");
 assert.ok(!source.includes('className={`${drag || frameDrag || polygonDrag !== null || markerDrag || markerLabelDrag || markerResizeDrag || textDrag || textResizeDrag || layerDrag || layerResizeDrag || collageResizeDrag || collageDrag ? "stage is-dragging" : "stage"} ${shape !== "original" ? `canvas-shape ${shape}` : ""}`'), "The stage must not be clipped or scaled together with the selected shape");
 assert.ok(!source.includes("strokeText"), "Text outlines must not use inward canvas strokeText rendering");
 assert.ok(!source.includes("WebkitTextStroke"), "Preview text outlines must not use WebkitTextStroke");
@@ -103,6 +111,7 @@ assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text lay
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
+assert.ok(/\.privacy-mask-preview\s*\{[\s\S]*?border:\s*2px solid var\(--accent\);[\s\S]*?background:\s*transparent;/.test(styles), "Mosaic preview must use the module border style without a transparent checker fill");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
 assert.ok(html.includes('name="google-site-verification"'), "Missing Google Search Console ownership verification tag");
