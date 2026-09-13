@@ -120,7 +120,6 @@ for (const contract of [
   '<b>All layers</b>',
   'Collage tile {item.slotIndex + 1}',
   'const collageModule = (',
-  'className="preview-layers-dock"',
   'className="preview-collage-dock"',
   'className="preview-bottom-docks"',
   'className="preview-zoom-row"',
@@ -145,16 +144,16 @@ assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== lay
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(styles.includes(".preview-adjustments") && styles.includes(".preview-pixel-readout") && styles.includes(".category-links"), "Preview workflow styles are missing");
 assert.ok(styles.includes(".compact-adjustments") && styles.includes(".danger-action"), "Compact adjustments or main-image deletion styling is missing");
-assert.ok(styles.includes(".preview-layers-dock"), "Layer controls must remain available after the left module is removed");
+assert.ok(source.includes("const imageLayersModule") && source.indexOf("{imageLayersModule}") < source.indexOf('<section className="preview">'), "Layer controls must be placed in the right editor column");
 assert.ok(!styles.includes("transition: transform 0.2s ease;"), "Image dragging must not be delayed by a transform transition");
 assert.ok(styles.includes(".main-shape-frame") && styles.includes(".preview-zoom-row"), "Shape clipping must be independent from image zoom controls");
-assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".preview-center-column > .preview-adjustments"), "Collage, layers, and light controls must use their assigned layout docks");
+assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".preview-center-column > .preview-adjustments"), "Collage and light controls must use their assigned center layout docks");
 assert.ok(!source.includes('<div className="legacy-layers-module"'), "The retired duplicate layer module must not mount");
 assert.ok(source.includes('onKeyDown={(event) => {\n                        if (event.key !== "Enter") return;') && source.includes('commitCrop();'), "Pressing Enter on an active size must commit the crop");
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf('<div className="preview-bottom-docks">') < source.indexOf("{adjustmentsModule}"), "Collage controls must appear before light controls");
-assert.ok(styles.includes(".workspace") && styles.includes("grid-template-columns: minmax(0, 1fr) 390px") && styles.includes(".preview-workarea") && styles.includes("grid-template-columns: 176px minmax(0, 1fr)"), "Workspace must retain left, center, and right columns with preview at the center top");
+assert.ok(styles.includes(".workspace") && styles.includes("grid-template-columns: minmax(0, 1fr) 390px") && styles.includes(".preview-workarea") && styles.includes("grid-template-columns: 318px minmax(0, 1fr)"), "Workspace must retain left, center, and right columns with preview at the center top");
 const retiredSideToolsStyle = styles.match(/\.preview-side-tools\s*\{([^}]*)\}/)?.[1] ?? "";
 assert.ok(retiredSideToolsStyle.includes("display: none") && !retiredSideToolsStyle.includes("display: grid"), "The retired fourth control column must stay hidden");
 assert.ok(source.includes('aria-label="Quick filters"'), "Light controls and quick filters must remain available below the preview workflow");

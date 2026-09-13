@@ -1956,17 +1956,6 @@ function App() {
         </div>
       </div>
       <div className="background-tools">
-        <div className="tolerance-row">
-          <span>Solid background tolerance</span>
-          <input
-            type="range"
-            min="5"
-            max="80"
-            value={backgroundTolerance}
-            onChange={(event) => setBackgroundTolerance(Number(event.target.value))}
-          />
-          <b>{backgroundTolerance}</b>
-        </div>
         <label className="transparent-check">
           <input
             type="checkbox"
@@ -1984,6 +1973,21 @@ function App() {
       </div>
       <button className="reset-all" onClick={resetEdits}>Reset all edits</button>
     </>
+  );
+  const privacyModule = (
+    <section className="left-privacy-module" aria-label="Privacy cover">
+      <Step n="04" title="Privacy cover" sub="Mosaic or cover a detail in the preview" />
+      <div className="sticker-panel">
+        <div>{privacyStickers.map((item) => <button key={item} className={privacySticker === item ? "active" : ""} onClick={() => { setPrivacySticker(item); if (url || selectedCollageTemplate) setPlacingSticker(true); }} title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}>{item === "mosaic" ? "▦" : item}</button>)}</div>
+        <label>Size <input type="range" min="4" max="70" value={stickerSize} onChange={(event) => { const size = Number(event.target.value); setStickerSize(size); if (selectedCoverId !== null) setPrivacyCovers((current) => current.map((cover) => cover.id === selectedCoverId ? { ...cover, size } : cover)); }} /></label>
+        <button onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate}>Add custom sticker</button>
+        <input ref={privacyInput} type="file" accept="image/*" hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setPrivacySticker(URL.createObjectURL(file)); setPlacingSticker(true); event.target.value = ""; }} />
+        <button className={placingSticker ? "place active" : "place"} disabled={!privacySticker || (!url && !selectedCollageTemplate)} onClick={() => setPlacingSticker(true)}>{placingSticker ? "Click the image…" : "Place on image"}</button>
+        <button onClick={() => { if (selectedCoverId !== null) removePrivacyCover(selectedCoverId); }} disabled={selectedCoverId === null}>Delete selected</button>
+        {privacyCovers.length > 0 && <div className="cover-list">{privacyCovers.map((cover, index) => <button key={cover.id} className={selectedCoverId === cover.id ? "active" : ""} onClick={() => togglePrivacyCover(cover)}>{cover.kind === "mosaic" ? "▦" : cover.kind} #{index + 1}</button>)}</div>}
+        <small>Choose a cover, then click its exact position in the preview.</small>
+      </div>
+    </section>
   );
   const adjustmentsModule = (
     <section className="preview-adjustments" aria-label="Light color and filter controls">
@@ -2108,99 +2112,6 @@ function App() {
             */}
             {shapeModule}
             {textModule}
-            <Step
-              n="04"
-              title="Privacy cover"
-              sub="Place mosaic or a cute sticker exactly where needed"
-            />
-            <div className="sticker-panel">
-              <div>
-                {privacyStickers.map((item) => (
-                  <button
-                    key={item}
-                    className={privacySticker === item ? "active" : ""}
-                    onClick={() => {
-                      setPrivacySticker(item);
-                      if (url || selectedCollageTemplate) setPlacingSticker(true);
-                    }}
-                    title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}
-                  >
-                    {item === "mosaic" ? "▦" : item}
-                  </button>
-                ))}
-              </div>
-              <label>
-                Size{" "}
-                <input
-                  type="range"
-                  min="4"
-                  max="70"
-                  value={stickerSize}
-                  onChange={(event) => {
-                    const size = Number(event.target.value);
-                    setStickerSize(size);
-                    if (selectedCoverId !== null)
-                      setPrivacyCovers((current) =>
-                        current.map((cover) =>
-                          cover.id === selectedCoverId
-                            ? { ...cover, size }
-                            : cover,
-                        ),
-                      );
-                  }}
-                />
-              </label>
-              <button onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate}>
-                Add custom sticker
-              </button>
-              <input
-                ref={privacyInput}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  setPrivacySticker(URL.createObjectURL(file));
-                  setPlacingSticker(true);
-                  event.target.value = "";
-                }}
-              />
-              <button
-                className={placingSticker ? "place active" : "place"}
-                disabled={!privacySticker || (!url && !selectedCollageTemplate)}
-                onClick={() => setPlacingSticker(true)}
-              >
-                {placingSticker ? "Click the image…" : "Place on image"}
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedCoverId !== null) removePrivacyCover(selectedCoverId);
-                }}
-                disabled={selectedCoverId === null}
-              >
-                Delete selected
-              </button>
-              {privacyCovers.length > 0 && (
-                <div className="cover-list">
-                  {privacyCovers.map((cover, index) => (
-                    <button
-                      key={cover.id}
-                      className={selectedCoverId === cover.id ? "active" : ""}
-                      onClick={() => {
-                        togglePrivacyCover(cover);
-                      }}
-                    >
-                      {cover.kind === "mosaic" ? "▦" : cover.kind} #{index + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <small>
-                Choose Mosaic or a sticker, choose its size, then click the
-                exact spot you want to cover in the preview.
-              </small>
-            </div>
             <div className="legacy-text-module" aria-hidden="true">
             <Step
               n="04"
@@ -2516,6 +2427,7 @@ function App() {
                 Enter either cm or inch; the other unit is shown automatically.
               </small>
             </div>
+            {imageLayersModule}
             {/*
             <Step
               n="06"
@@ -2606,6 +2518,7 @@ function App() {
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
+              {privacyModule}
             </aside>
             <div className="preview-center-column">
             <div
@@ -2954,12 +2867,7 @@ function App() {
                   : "No image selected"}
               </span>
             </div>
-            <div className="preview-bottom-docks">
-              {collageModule}
-              <div className="preview-layers-dock">
-                {imageLayersModule}
-              </div>
-            </div>
+            <div className="preview-bottom-docks">{collageModule}</div>
             {adjustmentsModule}
             <div className="export">
               <label>

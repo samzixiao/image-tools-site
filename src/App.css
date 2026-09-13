@@ -3135,3 +3135,149 @@ footer {
 .stage > img {
   object-position: center;
 }
+
+/* Single-screen editor: one fixed dark workbench, arranged as left / center / right. */
+.workspace {
+  --bg-panel: #242724;
+  --bg-panel-muted: #202320;
+  --bg-workspace: #191b19;
+  --bg-workspace-soft: #2a2e2a;
+  --bg-input: #1d201d;
+  --bg-elev: #303430;
+  --text: #f1f2eb;
+  --text-muted: #c2c7bd;
+  --text-faint: #92988e;
+  --text-on-dark: #f1f2eb;
+  --text-on-dark-muted: #b7bdb2;
+  --border: #41473f;
+  --border-strong: #626b60;
+  --border-dark: #41473f;
+  --border-dark-strong: #626b60;
+  max-width: 1700px;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  min-height: 790px;
+  overflow: visible;
+  background: var(--bg-workspace);
+  color: var(--text-on-dark);
+}
+.controls {
+  grid-column: 2;
+  grid-row: 1;
+  position: static;
+  overflow: visible;
+  max-height: none;
+  padding: 16px;
+  border-left-color: var(--border-dark);
+  background: transparent;
+}
+.preview {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  padding: 16px;
+  background: transparent;
+}
+.preview-head {
+  margin-left: 334px;
+  width: min(100% - 334px, 760px);
+}
+.preview-workarea {
+  grid-template-columns: 318px minmax(0, 1fr);
+  gap: 16px;
+}
+.preview-center-column {
+  max-width: 760px;
+}
+.preview-size-tools {
+  padding: 10px;
+  background: transparent;
+  border-color: var(--border-dark);
+}
+.preview-size-tools .batch-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.preview-size-tools .batch-option {
+  min-width: 0;
+  min-height: 50px;
+  padding: 4px 2px;
+  text-align: center;
+}
+.preview-size-tools .batch-option b,
+.preview-size-tools .batch-option span,
+.preview-size-tools .batch-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  line-height: 1.25;
+}
+.left-privacy-module {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-dark);
+}
+.left-privacy-module .step { padding: 0; }
+.left-privacy-module .step p,
+.left-privacy-module .step small,
+.left-privacy-module .sticker-panel small { color: var(--text-on-dark-muted); }
+.left-privacy-module .sticker-panel {
+  margin: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-on-dark);
+}
+.left-privacy-module .sticker-panel button,
+.left-privacy-module .sticker-panel input { border-color: var(--border-dark-strong); }
+.right-shape-module {
+  margin: 0 0 10px;
+  padding: 10px;
+  background: transparent;
+  border-color: var(--border-dark);
+}
+.right-shape-module > b { color: var(--text-on-dark); }
+.right-shape-module .shape-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.right-shape-module .shape { min-width: 0; padding: 4px 1px; }
+.right-shape-module .shape small { font-size: 8px; }
+.controls .step > div p,
+.controls .step > div small,
+.controls .caption-direct-edit,
+.controls .hint { color: var(--text-on-dark-muted); }
+.controls .caption-module,
+.controls .caption-editor,
+.controls .measure-module,
+.controls .layers-panel,
+.controls .layer-section,
+.controls .background-tools {
+  background: transparent;
+  border-color: var(--border-dark);
+  color: var(--text-on-dark);
+}
+.controls select,
+.controls input:not([type="range"]):not([type="color"]),
+.controls button { color: var(--text-on-dark); }
+.preview-bottom-docks {
+  display: block;
+  margin-top: 8px;
+}
+.preview-collage-dock { padding: 8px 10px; }
+.preview-collage-heading { display: flex; align-items: baseline; gap: 8px; }
+.preview-collage-dock .collage-templates { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+.preview-collage-dock .collage-templates button { min-width: 0; padding: 5px 2px; font-size: 9px; }
+.preview-center-column > .preview-adjustments { margin-top: 8px; }
+.preview-adjustments { padding: 8px 10px; }
+.preview-adjustments .compact-adjustments { gap: 6px; }
+.controls .layers-panel { margin-top: 10px; }
+.controls .layer-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.controls .layer-list .layer-row { grid-column: 1 / -1; }
+
+@media (max-width: 1180px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) 320px; }
+  .preview-workarea { grid-template-columns: 250px minmax(0, 1fr); }
+  .preview-head { margin-left: 266px; width: min(100% - 266px, 760px); }
+  .preview-size-tools .batch-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .right-shape-module .shape-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .preview-collage-dock .collage-templates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
