@@ -150,12 +150,22 @@ const presets: Preset[] = [
     height: 630,
   },
 ];
-// Square presets share the same crop interaction. Keep the social square as the
-// single visible 1:1 choice; marketplace-specific output resolutions remain
-// available through the SEO links and the custom-size picker.
-const visibleCanvasPresets = presets.filter(
-  (item) => item.id !== "amazon" && item.id !== "shopify",
-);
+type CropRatioPreset = Preset & { ratio: string; platforms: string };
+
+// These are editing ratios, not an output-resolution menu. A useful default
+// export resolution is retained internally for each ratio.
+const cropRatioPresets: CropRatioPreset[] = [
+  { ...presets[0], ratio: "1:1", platforms: "Instagram post · Amazon · Shopify" },
+  { ...presets[1], ratio: "9:16", platforms: "Instagram Story · Reels · TikTok" },
+  { ...presets[3], ratio: "16:9", platforms: "YouTube thumbnail · video" },
+  { id: "four-three", group: "Standard", name: "标准横图", en: "Standard landscape", width: 1600, height: 1200, ratio: "4:3", platforms: "Standard photo · Facebook" },
+  { id: "three-two", group: "Photo", name: "照片横图", en: "Photo landscape", width: 1800, height: 1200, ratio: "3:2", platforms: "DSLR photo · Pinterest" },
+  { id: "four-five", group: "Instagram", name: "竖版帖子", en: "Portrait post", width: 1080, height: 1350, ratio: "4:5", platforms: "Instagram feed" },
+  { id: "three-four", group: "Photo", name: "标准竖图", en: "Standard portrait", width: 1500, height: 2000, ratio: "3:4", platforms: "Product · portrait photo" },
+  { ...presets[5], ratio: "5:4", platforms: "Etsy listing" },
+  { id: "twenty-one-nine", group: "Wide", name: "超宽横图", en: "Ultra-wide", width: 2100, height: 900, ratio: "21:9", platforms: "Banner · cinematic" },
+  { ...presets[7], ratio: "1.91:1", platforms: "Open Graph · website share" },
+];
 const shapes: Shape[] = [
   "original",
   "circle",
@@ -276,6 +286,7 @@ function App() {
     [natural, setNatural] = useState({ width: 0, height: 0 });
   const [preset, setPreset] = useState(requestedPreset),
     [custom, setCustom] = useState({ width: 1080, height: 1080 }),
+    [customRatio, setCustomRatio] = useState({ width: 1, height: 1 }),
     [sizeSelected, setSizeSelected] = useState(hasRequestedPreset);
   const [batchPresetIds, setBatchPresetIds] = useState<string[]>(hasRequestedPreset ? [requestedPreset.id] : []),
     [batchExporting, setBatchExporting] = useState(false);
@@ -552,12 +563,16 @@ function App() {
     setBatchPresetIds([next.id]);
     choosePreset(next);
   }
-  function chooseCustomSize() {
-    const width = Math.max(1, Math.round(custom.width));
-    const height = Math.max(1, Math.round(custom.height));
-    setCustom({ width, height });
+  function chooseCustomRatio() {
+    const width = Math.max(0.01, Number(customRatio.width));
+    const height = Math.max(0.01, Number(customRatio.height));
+    const longEdge = 2000;
+    const outputWidth = Math.max(1, Math.round((width / Math.max(width, height)) * longEdge));
+    const outputHeight = Math.max(1, Math.round((height / Math.max(width, height)) * longEdge));
+    setCustomRatio({ width, height });
+    setCustom({ width: outputWidth, height: outputHeight });
     setBatchPresetIds([]);
-    choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width, height });
+    choosePreset({ id: "custom", group: "Custom", name: "自定义比例", en: "Custom ratio", width: outputWidth, height: outputHeight });
   }
   function commitCrop() {
     if (!url || !sizeSelected) return;
@@ -2492,10 +2507,10 @@ function App() {
           <section className="preview">
             <div className="preview-workarea">
             <aside className="preview-size-tools" aria-label="Canvas size selection">
-              <b>CANVAS SIZES</b>
-              <small>Pick one output size. Click the active size again to clear it; the preview remains square.</small>
+              <b>CROP RATIOS</b>
+              <small>Choose a crop ratio. Click the active ratio again to clear it; platform notes are suggestions only.</small>
                 <div className="batch-options">
-                  {visibleCanvasPresets.map((item) => {
+                  {cropRatioPresets.map((item) => {
                   const selected = sizeSelected && preset.id === item.id;
                   return (
                     <button
@@ -2514,9 +2529,9 @@ function App() {
                         }
                       }}
                     >
-                      <b>{item.group}</b>
-                      <span>{item.en}</span>
-                      <small>{item.width} × {item.height}</small>
+                      <b>{item.ratio}</b>
+                      <span>{item.platforms}</span>
+                      <small>{item.en}</small>
                     </button>
                   );
                 })}
@@ -2529,7 +2544,7 @@ function App() {
                       setSizeSelected(false);
                       return;
                     }
-                    chooseCustomSize();
+                    chooseCustomRatio();
                   }}
                   onKeyDown={(event) => {
                     if (event.key !== "Enter") return;
@@ -2537,21 +2552,21 @@ function App() {
                     if (sizeSelected && preset.id === "custom") {
                       commitCrop();
                     } else {
-                      chooseCustomSize();
+                      chooseCustomRatio();
                       setCropCommitted(true);
                     }
                   }}
                 >
                   <b>Custom</b>
-                  <span>Custom canvas</span>
-                  <small>Set exact pixels below</small>
+                  <span>Custom ratio</span>
+                  <small>Set your own proportion below</small>
                 </button>
               </div>
               {preset.id === "custom" && (
                 <div className="batch-custom-size">
-                  <label>Width <input type="number" value={custom.width} onChange={(event) => setCustom({ ...custom, width: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomSize(); }} /></label>
-                  <b>×</b>
-                  <label>Height <input type="number" value={custom.height} onChange={(event) => setCustom({ ...custom, height: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomSize(); }} /></label>
+                  <label>Ratio width <input type="number" min="0.01" step="0.01" value={customRatio.width} onChange={(event) => setCustomRatio({ ...customRatio, width: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
+                  <b>:</b>
+                  <label>Ratio height <input type="number" min="0.01" step="0.01" value={customRatio.height} onChange={(event) => setCustomRatio({ ...customRatio, height: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
