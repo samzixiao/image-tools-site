@@ -152,7 +152,11 @@ assert.ok(!source.includes('<div className="legacy-layers-module"'), "The retire
 assert.ok(source.includes('onKeyDown={(event) => {\n                        if (event.key !== "Enter") return;') && source.includes('commitCrop();'), "Pressing Enter on an active size must commit the crop");
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
-assert.ok(source.indexOf('<div className="preview-bottom-docks">') < source.indexOf("{adjustmentsModule}"), "Collage controls must appear before light controls");
+assert.ok(source.indexOf("{adjustmentsModule}") < source.indexOf('<div className="preview-bottom-docks">'), "Collage controls must appear below light controls");
+assert.ok(source.includes('if (event.detail >= 2)') && source.includes('endPointerInteractions();'), "Double-clicking a text layer must enter editing without leaving a drag state");
+assert.ok(source.includes('const isSelected = privacySticker === item') && source.includes('setPrivacySticker(isSelected ? "" : item)'), "Privacy picker buttons must toggle on and off");
+assert.ok(source.includes('activeMarkerPart') && source.includes('measure-quick-controls'), "Dimension arrows and labels must use compact context-sensitive controls");
+assert.ok(styles.includes('.measure-editor .legacy-marker-control') && styles.includes('.measure-quick-controls'), "Retired marker controls must stay condensed");
 assert.ok(source.includes('shapes.filter((item) => item !== "original")'), "The shape chooser must not show the Original option");
 assert.ok(source.indexOf('<div className="left-text-module">{textModule}</div>') < source.indexOf('{privacyModule}'), "Text controls must appear above privacy controls in the left column");
 assert.ok(source.indexOf('{imageLayersModule}') < source.indexOf('n="05"'), "Layers must appear directly below the shape controls before dimension arrows");

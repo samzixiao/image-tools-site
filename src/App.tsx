@@ -275,6 +275,7 @@ function App() {
     [batchExporting, setBatchExporting] = useState(false);
   const [format, setFormat] = useState<Format>("image/jpeg"),
     [quality, setQuality] = useState(90),
+    [lastExportBytes, setLastExportBytes] = useState<number | null>(null),
     [mode, setMode] = useState<"crop" | "fit">("crop");
   const [shape, setShape] = useState<Shape>("original"),
     [shapeScale, setShapeScale] = useState(1),
@@ -336,6 +337,7 @@ function App() {
   } | null>(null);
   const [dimensionMarkers, setDimensionMarkers] = useState<DimensionMarker[]>([]),
     [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
+  const [activeMarkerPart, setActiveMarkerPart] = useState<"arrow" | "label">("arrow");
   const [markerDrag, setMarkerDrag] = useState<{
     id: number;
     x: number;
@@ -963,6 +965,7 @@ function App() {
     setSelectedTextId(null);
     setEditingTextId(null);
     setSelectedMarkerId(marker.id);
+    setActiveMarkerPart("arrow");
     setSelectedBaseImage(false);
     setMarkerDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.position });
   }
@@ -981,6 +984,7 @@ function App() {
     setSelectedTextId(null);
     setEditingTextId(null);
     setSelectedMarkerId(marker.id);
+    setActiveMarkerPart("label");
     setSelectedBaseImage(false);
     setMarkerLabelDrag({ id: marker.id, x: event.clientX, y: event.clientY, position: marker.labelPosition });
   }
@@ -1561,6 +1565,7 @@ function App() {
       link = document.createElement("a");
     link.download = `${fileName.replace(/\.[^.]+$/, "") || "image"}-${output.width}x${output.height}.${extension}`;
     link.href = canvas.toDataURL(format, quality / 100);
+    canvas.toBlob((blob) => setLastExportBytes(blob?.size ?? null), format, quality / 100);
     link.click();
   }
   async function downloadBatch() {
@@ -1971,7 +1976,7 @@ function App() {
     <section className="left-privacy-module" aria-label="Privacy cover">
       <Step n="04" title="Privacy cover" sub="Mosaic or cover a detail in the preview" />
       <div className="sticker-panel">
-        <div>{privacyStickers.map((item) => <button key={item} className={`${privacySticker === item ? "active" : ""} ${item === "mosaic" ? "mosaic-picker" : ""}`} onClick={() => { setPrivacySticker(item); if (url || selectedCollageTemplate) setPlacingSticker(true); }} title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}>{item === "mosaic" ? "▦" : item}</button>)}<span className="sticker-custom-spacer" aria-hidden="true" /><button className="sticker-custom-add" onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate} title="Add custom sticker">＋</button></div>
+        <div>{privacyStickers.map((item) => <button key={item} className={`${privacySticker === item ? "active" : ""} ${item === "mosaic" ? "mosaic-picker" : ""}`} onClick={() => { const isSelected = privacySticker === item; setPrivacySticker(isSelected ? "" : item); setPlacingSticker(!isSelected && Boolean(url || selectedCollageTemplate)); }} title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}>{item === "mosaic" ? "▦" : item}</button>)}<span className="sticker-custom-spacer" aria-hidden="true" /><button className="sticker-custom-add" onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate} title="Add custom sticker">＋</button></div>
         <label>Size <input type="range" min="4" max="70" value={stickerSize} onChange={(event) => { const size = Number(event.target.value); setStickerSize(size); if (selectedCoverId !== null) setPrivacyCovers((current) => current.map((cover) => cover.id === selectedCoverId ? { ...cover, size } : cover)); }} /></label>
         <input ref={privacyInput} type="file" accept="image/*" hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setPrivacySticker(URL.createObjectURL(file)); setPlacingSticker(true); event.target.value = ""; }} />
         <button className={placingSticker ? "place active" : "place"} disabled={!privacySticker || (!url && !selectedCollageTemplate)} onClick={() => setPlacingSticker(true)}>{placingSticker ? "Click the image…" : "Place on image"}</button>
@@ -2300,13 +2305,18 @@ function App() {
                     },
                   ]);
                   setSelectedMarkerId(id);
+                  setActiveMarkerPart("arrow");
                 }}
               >
                 ＋ Add dimension arrow
               </button>
               {selectedMarker && (
                 <div className="measure-editor">
-                  <label>
+                  <div className="measure-quick-controls">
+                    <label>{activeMarkerPart === "arrow" ? "Arrow size" : "Text size"}<input type="range" min={activeMarkerPart === "arrow" ? "12" : "0.4"} max={activeMarkerPart === "arrow" ? "88" : "3"} step={activeMarkerPart === "arrow" ? "1" : "0.1"} value={activeMarkerPart === "arrow" ? selectedMarker.length : selectedMarker.labelScale} onChange={(event) => activeMarkerPart === "arrow" ? updateSelectedMarker({ length: Number(event.target.value) }) : updateSelectedMarker({ labelScale: Number(event.target.value) })} /></label>
+                    <label>{activeMarkerPart === "arrow" ? "Arrow angle" : "Text angle"}<input type="range" min="-180" max="180" value={activeMarkerPart === "arrow" ? selectedMarker.rotation : selectedMarker.labelRotation} onChange={(event) => activeMarkerPart === "arrow" ? updateSelectedMarker({ rotation: Number(event.target.value) }) : updateSelectedMarker({ labelRotation: Number(event.target.value) })} /></label>
+                  </div>
+                  <label className="measure-value">
                     Measurement
                     <div>
                       <input
@@ -2333,7 +2343,7 @@ function App() {
                     <small>{dimensionLabel(selectedMarker)}</small>
                   </label>
                   <label className="measure-dual-toggle"><input type="checkbox" checked={selectedMarker.showDualUnit} onChange={(event) => updateSelectedMarker({ showDualUnit: event.target.checked })} /> Show cm + inch</label>
-                  <label>
+                  <label className="legacy-marker-control">
                     Arrow length <b>{Math.round(selectedMarker.length)}%</b>
                     <input
                       type="range"
@@ -2347,7 +2357,7 @@ function App() {
                       }
                     />
                   </label>
-                  <label>
+                  <label className="legacy-marker-control">
                     Rotate <b>{Math.round(selectedMarker.rotation)}°</b>
                     <input
                       type="range"
@@ -2361,14 +2371,14 @@ function App() {
                       }
                     />
                   </label>
-                  <label>
+                  <label className="marker-style">
                     Arrow color <input type="color" value={selectedMarker.color} onChange={(event) => updateSelectedMarker({ color: event.target.value })} />
                   </label>
-                  <label>
+                  <label className="marker-style">
                     Stroke <b>{selectedMarker.thickness}px</b>
                     <input type="range" min="1" max="10" value={selectedMarker.thickness} onChange={(event) => updateSelectedMarker({ thickness: Number(event.target.value) })} />
                   </label>
-                  <label>
+                  <label className="marker-style">
                     Ends
                     <select value={selectedMarker.endStyle} onChange={(event) => updateSelectedMarker({ endStyle: event.target.value as DimensionMarker["endStyle"] })}>
                       <option value="arrows">Double arrows</option>
@@ -2440,14 +2450,6 @@ function App() {
             */}
           </aside>
           <section className="preview">
-            <div className="preview-head">
-              <div>
-                <small>LIVE PREVIEW</small>
-                <strong>
-                  {sizeSelected ? `${preset.group} · ${preset.en}` : "Original image · no size selected"}
-                </strong>
-              </div>
-            </div>
             <div className="preview-workarea">
             <aside className="preview-size-tools" aria-label="Canvas size selection">
               <b>CANVAS SIZES</b>
@@ -2692,16 +2694,21 @@ function App() {
                       key={layer.id}
                       data-text-layer-id={layer.id}
                       className={`caption-overlay editable${layer.id === selectedTextId ? " selected" : ""}${editingTextId === layer.id ? " editing" : ""}`}
-                      onPointerDown={(event) => beginTextDrag(event, layer)}
+                      onPointerDown={(event) => {
+                        if (event.detail >= 2) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          endPointerInteractions();
+                          setSelectedTextId(layer.id);
+                          setEditingTextId(layer.id);
+                          return;
+                        }
+                        beginTextDrag(event, layer);
+                      }}
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedTextId(layer.id);
                         if (event.detail >= 2) setEditingTextId(layer.id);
-                      }}
-                      onDoubleClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedTextId(layer.id);
-                        setEditingTextId(layer.id);
                       }}
                       style={{
                         color: layer.color,
@@ -2864,8 +2871,8 @@ function App() {
                   : "No image selected"}
               </span>
             </div>
-            <div className="preview-bottom-docks">{collageModule}</div>
             {adjustmentsModule}
+            <div className="preview-bottom-docks">{collageModule}</div>
             <div className="export">
               <label>
                 Format{" "}
@@ -2888,7 +2895,7 @@ function App() {
                     value={quality}
                     onChange={(event) => setQuality(Number(event.target.value))}
                   />{" "}
-                  {quality}%
+                  {quality}% <span className="export-size">{lastExportBytes === null ? "— MB" : `${(lastExportBytes / 1024 / 1024).toFixed(2)} MB`}</span>
                 </label>
               )}
               <button className="download" onClick={downloadAll} disabled={!url && collageImages.length === 0}>

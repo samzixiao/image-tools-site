@@ -754,6 +754,7 @@
   accent-color: var(--accent);
   width: 70px;
 }
+.export-size { min-width: 54px; color: var(--text-on-dark-muted); font-variant-numeric: tabular-nums; }
 .download {
   margin-left: auto;
   border: 0;
@@ -3184,6 +3185,7 @@ footer {
 .preview-workarea {
   grid-template-columns: 318px minmax(0, 1fr);
   gap: 16px;
+  padding-top: 32px;
 }
 .preview-center-column {
   max-width: 760px;
@@ -3241,7 +3243,7 @@ footer {
 .left-privacy-module .sticker-panel button,
 .left-privacy-module .sticker-panel input { border-color: var(--border-dark-strong); }
 .right-shape-module {
-  margin: 56px 0 10px;
+  margin: 32px 0 10px;
   padding: 10px;
   background: transparent;
   border-color: var(--border-dark);
@@ -3266,6 +3268,11 @@ footer {
   background: #4a5549 !important;
   color: #ffffff !important;
 }
+.right-image-actions .danger-action {
+  color: #ff8d7c !important;
+  border-color: #bb5548 !important;
+}
+.right-image-actions button:not(.danger-action) { font-size: 9px; padding: 4px 5px; }
 .controls .step > div p,
 .controls .step > div small,
 .controls .caption-direct-edit,
@@ -3300,6 +3307,35 @@ footer {
 .adjustment-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
 .adjustment-footer .filter-presets { margin: 0; }
 .adjustment-footer .adjustments-reset { justify-self: end; margin: 0; }
+.workspace .batch-option.active,
+.workspace .shape.active,
+.workspace .filter-presets button.active,
+.workspace .layer-list button.active,
+.workspace .caption-list button.active,
+.workspace .cover-list button.active,
+.workspace .measure-list button.active,
+.workspace .collage-templates button.active {
+  background: transparent !important;
+  border-color: var(--accent) !important;
+  color: var(--text-on-dark) !important;
+}
+.workspace .preview-size-tools,
+.workspace .left-text-module,
+.workspace .left-privacy-module,
+.workspace .right-shape-module,
+.workspace .controls .layers-panel,
+.workspace .controls .measure-module,
+.workspace .preview-adjustments,
+.workspace .preview-collage-dock { font-size: 12px; }
+.workspace .shape-icon { font-size: 20px; }
+.measure-quick-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.measure-quick-controls label { display: grid; gap: 4px; }
+.measure-quick-controls input { width: 100%; }
+.measure-editor .legacy-marker-control,
+.measure-editor .measure-label-controls { display: none; }
+.measure-editor .measure-value { display: grid; gap: 4px; }
+.measure-editor .marker-style { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.measure-editor .marker-style input[type="range"] { width: 58px; }
 .controls .layers-panel { margin-top: 10px; }
 .controls .layer-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .controls .layer-list .layer-row { grid-column: 1 / -1; }
