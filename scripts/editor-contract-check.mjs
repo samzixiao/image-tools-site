@@ -112,6 +112,7 @@ for (const contract of [
   'className="legacy-layers-module"',
   'className="preview-layers-dock"',
   'className="preview-collage-dock"',
+  'className="preview-bottom-docks"',
   'className="preview-zoom-row"',
   'className={`main-shape-frame ${shape}`}',
 ]) {
@@ -134,11 +135,11 @@ assert.ok(!source.includes('layer.id === selectedTextId && editingTextId !== lay
 assert.ok(styles.includes(".caption-overlay") && /\.caption-overlay\s*\{[\s\S]*?overflow:\s*visible;/.test(styles), "Text delete control must be visible outside the text box");
 assert.ok(styles.includes(".preview-adjustments") && styles.includes(".preview-pixel-readout") && styles.includes(".category-links"), "Preview workflow styles are missing");
 assert.ok(styles.includes(".compact-adjustments") && styles.includes(".danger-action"), "Compact adjustments or main-image deletion styling is missing");
-assert.ok(styles.includes(".preview-layers-dock") && styles.includes(".legacy-layers-module"), "Layer and collage controls must be docked beside the preview");
+assert.ok(styles.includes(".preview-layers-dock") && styles.includes(".legacy-layers-module"), "Layer controls must remain available after the left module is removed");
 assert.ok(/\.legacy-layers-module\s*\{[^}]*display:\s*none\s*!important;/.test(styles), "The duplicate left layer module must stay hidden");
 assert.ok(!styles.includes("transition: transform 0.2s ease;"), "Image dragging must not be delayed by a transform transition");
 assert.ok(styles.includes(".main-shape-frame") && styles.includes(".preview-zoom-row"), "Shape clipping must be independent from image zoom controls");
-assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".controls .preview-adjustments"), "Collage and light controls must use their assigned layout docks");
+assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".controls .preview-adjustments"), "Collage, layers, and light controls must use their assigned layout docks");
 assert.ok(styles.includes(".preview-center-column"), "Preview controls must stay in the center column below the canvas");
 assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\s\S]*?display:\s*none\s*!important;/.test(styles), "The old duplicate text module must stay hidden");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");

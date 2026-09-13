@@ -2609,7 +2609,7 @@ function App() {
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <><button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button><button className="collage-delete-handle" aria-label={`Delete collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeCollageImage(item.id); }}>×</button></>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => event.stopPropagation()} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
+                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <><button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button><button className="collage-delete-handle" aria-label={`Delete collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeCollageImage(item.id); }}>×</button></>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onKeyDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? []); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2900,7 +2900,12 @@ function App() {
                   : "No image selected"}
               </span>
             </div>
-            {collageModule}
+            <div className="preview-bottom-docks">
+              {collageModule}
+              <div className="preview-layers-dock">
+                {imageLayersModule}
+              </div>
+            </div>
             <div className="export">
               <label>
                 Format{" "}
@@ -2994,9 +2999,6 @@ function App() {
                   <button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button>
                 </div>
                 <span>{rotation}°</span>
-              </div>
-              <div className="preview-layers-dock">
-                {imageLayersModule}
               </div>
               {url && (
                 <button className="danger-action" type="button" onClick={removeBaseImage}>

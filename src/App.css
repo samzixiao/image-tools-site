@@ -441,7 +441,7 @@
 .preview-center-column {
   width: 100%;
   min-width: 0;
-  max-width: 470px;
+  max-width: 720px;
   justify-self: center;
 }
 .preview-head {
@@ -1974,11 +1974,12 @@ footer {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border-dark);
 }
 .preview-zoom-row .preview-canvas-tools,
 .preview-zoom-row .preview-shape-tools {
-  flex: 1 1 0;
+  flex: 1 1 310px;
   min-width: 0;
   border-bottom: 0;
 }
@@ -2231,7 +2232,9 @@ footer {
 }
 .preview-canvas-tools button:disabled { opacity: 0.35; cursor: not-allowed; }
 .preview-canvas-tools input {
-  width: 100px;
+  width: auto;
+  min-width: 48px;
+  flex: 1 1 52px;
   accent-color: var(--accent);
   height: 4px;
 }
@@ -2247,7 +2250,7 @@ footer {
   font-size: 10px;
 }
 .preview-shape-tools b {
-  min-width: 80px;
+  min-width: 62px;
   font-weight: 500;
   color: var(--text-on-dark);
   text-transform: uppercase;
@@ -2269,7 +2272,7 @@ footer {
   border-color: var(--accent);
 }
 .preview-shape-tools button:disabled { opacity: 0.35; }
-.preview-shape-tools input { width: 100px; accent-color: var(--accent); height: 4px; }
+.preview-shape-tools input { width: auto; min-width: 48px; flex: 1 1 52px; accent-color: var(--accent); height: 4px; }
 .main-shape-frame {
   position: absolute;
   z-index: 1;
@@ -2287,7 +2290,7 @@ footer {
 .preview-collage-dock {
   display: grid;
   gap: 8px;
-  margin-top: 10px;
+  margin: 0;
   padding: 11px;
   border: 1px solid var(--border-dark);
   border-radius: var(--r-md);
@@ -2327,6 +2330,26 @@ footer {
   border-color: var(--border-dark);
   background: var(--bg-workspace);
   color: var(--text-on-dark);
+}
+.preview-bottom-docks {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: start;
+  gap: 12px;
+  margin-top: 10px;
+}
+.preview-bottom-docks .preview-layers-dock {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--r-md);
+  background: var(--bg-workspace-soft);
+}
+@media (max-width: 680px) {
+  .preview-bottom-docks { grid-template-columns: 1fr; }
+  .preview-zoom-row { gap: 0; }
+  .preview-zoom-row .preview-canvas-tools,
+  .preview-zoom-row .preview-shape-tools { flex-basis: 100%; }
 }
 .controls .preview-adjustments {
   grid-template-columns: 1fr;
