@@ -240,6 +240,12 @@ function centeredCropForAspect(width: number, height: number, targetAspect: numb
   const cropHeight = sourceAspect / targetAspect;
   return { x: 0, y: (1 - cropHeight) / 2, width: 1, height: cropHeight };
 }
+function frameForCropAspect(targetAspect: number) {
+  const scale = 0.82;
+  return targetAspect >= 1
+    ? { x: (1 - scale) / 2, y: (1 - scale / targetAspect) / 2, width: scale, height: scale / targetAspect }
+    : { x: (1 - scale * targetAspect) / 2, y: (1 - scale) / 2, width: scale * targetAspect, height: scale };
+}
 const privacyStickers = [
   "mosaic",
   "🕶️",
@@ -571,6 +577,7 @@ function App() {
     const outputHeight = Math.max(1, Math.round((height / Math.max(width, height)) * longEdge));
     setCustomRatio({ width, height });
     setCustom({ width: outputWidth, height: outputHeight });
+    setCustomFrame(frameForCropAspect(outputWidth / outputHeight));
     setBatchPresetIds([]);
     choosePreset({ id: "custom", group: "Custom", name: "自定义比例", en: "Custom ratio", width: outputWidth, height: outputHeight });
   }

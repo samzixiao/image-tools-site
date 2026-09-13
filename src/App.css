@@ -3367,12 +3367,15 @@ footer {
 .workspace .controls .layers-panel,
 .workspace .controls .measure-module,
 .workspace .preview-adjustments,
-.workspace .preview-collage-dock { font-size: 13px; }
-.preview-size-tools .batch-option b { font-size: 11px; }
+.workspace .preview-collage-dock { font-size: 13px !important; }
+.workspace .preview-size-tools .batch-option b { font-size: 11px !important; }
 .preview-size-tools .batch-option span,
-.preview-size-tools .batch-option small { font-size: 10px; }
-.right-shape-module .shape small { font-size: 10px; }
-.workspace .shape-icon { font-size: 21px; }
+.preview-size-tools .batch-option small { font-size: 10px !important; }
+.workspace .right-shape-module .shape small { font-size: 10px !important; }
+.workspace .shape-icon { font-size: 21px !important; height: 24px; line-height: 24px; }
+.workspace .left-privacy-module .sticker-panel > div button { min-height: 36px; font-size: 20px !important; }
+.workspace .left-privacy-module .sticker-panel > div .mosaic-picker { font-size: 22px !important; }
+.workspace .left-privacy-module .sticker-panel > div .sticker-custom-add { font-size: 23px !important; }
 .stage,
 .stage img,
 .preview-image,
