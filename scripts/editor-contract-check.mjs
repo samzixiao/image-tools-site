@@ -150,6 +150,7 @@ assert.ok(styles.includes(".main-shape-frame") && styles.includes(".preview-zoom
 assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".preview-center-column > .preview-adjustments"), "Collage and light controls must use their assigned center layout docks");
 assert.ok(!source.includes('<div className="legacy-layers-module"'), "The retired duplicate layer module must not mount");
 assert.ok(source.includes('onKeyDown={(event) => {\n                        if (event.key !== "Enter") return;') && source.includes('commitCrop();'), "Pressing Enter on an active size must commit the crop");
+assert.ok(source.includes('function confirmSelectedCrop(event: KeyboardEvent)') && source.includes('window.addEventListener("keydown", confirmSelectedCrop)'), "Enter must commit a selected crop even when focus has left the size button");
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf("{adjustmentsModule}") < source.indexOf('<div className="preview-bottom-docks">'), "Collage controls must appear below light controls");

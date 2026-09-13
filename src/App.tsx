@@ -580,6 +580,18 @@ function App() {
       window.removeEventListener("blur", endPointerInteractions);
     };
   }, []);
+  useEffect(() => {
+    function confirmSelectedCrop(event: KeyboardEvent) {
+      if (event.key !== "Enter" || event.repeat || !url || !sizeSelected) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      event.preventDefault();
+      setMode("crop");
+      setCropCommitted(true);
+    }
+    window.addEventListener("keydown", confirmSelectedCrop);
+    return () => window.removeEventListener("keydown", confirmSelectedCrop);
+  }, [url, sizeSelected]);
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!url && !collageTemplateId) return;
     if (placingSticker && privacySticker) {
