@@ -71,7 +71,9 @@ type ImageLayer = {
   width: number;
   opacity: number;
 };
-type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; shapeScale: number; position: { x: number; y: number }; shape: Exclude<Shape, "polygon"> };
+type Adjustments = { brightness: number; contrast: number; saturation: number; hue: number; blur: number; grayscale: number; sepia: number; invert: number };
+const defaultAdjustments: Adjustments = { brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0, sepia: 0, invert: 0 };
+type CollageImage = { id: number; slotIndex: number; url: string; name: string; scale: number; shapeScale: number; position: { x: number; y: number }; shape: Exclude<Shape, "polygon">; adjustments: Adjustments };
 type Preset = {
   id: string;
   group: string;
@@ -278,16 +280,7 @@ function App() {
     [rotation, setRotation] = useState(0),
     [flipX, setFlipX] = useState(false),
     [flipY, setFlipY] = useState(false);
-  const [adjust, setAdjust] = useState({
-    brightness: 100,
-    contrast: 100,
-    saturation: 100,
-    hue: 0,
-    blur: 0,
-    grayscale: 0,
-    sepia: 0,
-    invert: 0,
-  });
+  const [adjust, setAdjust] = useState<Adjustments>(defaultAdjustments);
   const [background, setBackground] = useState("#1f2120"),
     [transparentBackground, setTransparentBackground] = useState(false),
     [borderColor, setBorderColor] = useState("#e66d5b"),
@@ -399,6 +392,7 @@ function App() {
   const [addingPolygonPoint, setAddingPolygonPoint] = useState(false),
     [polygonDrag, setPolygonDrag] = useState<number | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0, width: 1, height: 1 }),
+    [cropCommitted, setCropCommitted] = useState(false),
     [drag, setDrag] = useState<{
       x: number;
       y: number;
@@ -507,7 +501,7 @@ function App() {
       const next = hasTargetSlot ? [...current] : [];
       images.slice(0, template.slots.length - start).forEach((file, index) => {
         const slotIndex = start + index;
-        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, shapeScale: 1, position: { x: 0.5, y: 0.5 }, shape: "original" as const };
+        const item = { id: firstId + index, slotIndex, url: URL.createObjectURL(file), name: file.name, scale: 1, shapeScale: 1, position: { x: 0.5, y: 0.5 }, shape: "original" as const, adjustments: { ...defaultAdjustments } };
         const existingIndex = next.findIndex((entry) => entry.slotIndex === slotIndex);
         if (existingIndex >= 0) next[existingIndex] = item;
         else next.push(item);
@@ -525,6 +519,7 @@ function App() {
   function choosePreset(next: Preset) {
     setPreset(next);
     setSizeSelected(true);
+    setCropCommitted(false);
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
     const nextCrop = centeredCropForAspect(natural.width, natural.height, next.width / next.height);
@@ -537,6 +532,7 @@ function App() {
     if (isActive) {
       setBatchPresetIds([]);
       setSizeSelected(false);
+      setCropCommitted(false);
       return;
     }
     setBatchPresetIds([next.id]);
@@ -548,6 +544,11 @@ function App() {
     setCustom({ width, height });
     setBatchPresetIds([]);
     choosePreset({ id: "custom", group: "Custom", name: "自定义尺寸", en: "Custom size", width, height });
+  }
+  function commitCrop() {
+    if (!url || !sizeSelected) return;
+    setMode("crop");
+    setCropCommitted(true);
   }
   function endPointerInteractions() {
     setDrag(null);
@@ -999,7 +1000,8 @@ function App() {
     setSelectedTextId(layer.id);
     setTextResizeDrag({ id: layer.id, x: event.clientX, y: event.clientY, width: layer.boxWidth, height: layer.boxHeight });
   }
-  const filterValue = `brightness(${adjust.brightness}%) contrast(${adjust.contrast}%) saturate(${adjust.saturation}%) hue-rotate(${adjust.hue}deg) blur(${adjust.blur}px) grayscale(${adjust.grayscale}%) sepia(${adjust.sepia}%) invert(${adjust.invert}%)`;
+  const filterValueFor = (value: Adjustments) => `brightness(${value.brightness}%) contrast(${value.contrast}%) saturate(${value.saturation}%) hue-rotate(${value.hue}deg) blur(${value.blur}px) grayscale(${value.grayscale}%) sepia(${value.sepia}%) invert(${value.invert}%)`;
+  const filterValue = filterValueFor(adjust);
   function resetEdits() {
     if (originalUrl) setUrl(originalUrl);
     setZoom(1);
@@ -1429,6 +1431,7 @@ function App() {
     position = { x: 0.5, y: 0.5 },
     imageShape: CollageImage["shape"] = "original",
     imageShapeScale = 1,
+    imageAdjustments: Adjustments = defaultAdjustments,
   ) {
     const shapeSize = imageShape === "original" ? 0 : Math.min(width, height) * imageShapeScale;
     const targetX = imageShape === "original" ? x : x + (width - shapeSize) / 2;
@@ -1447,6 +1450,7 @@ function App() {
       path(ctx, targetWidth, targetHeight, imageShape);
     }
     ctx.clip();
+    ctx.filter = filterValueFor(imageAdjustments);
     ctx.drawImage(image, (width - drawWidth) * position.x - (targetX - x), (height - drawHeight) * position.y - (targetY - y), drawWidth, drawHeight);
     ctx.restore();
   }
@@ -1506,9 +1510,9 @@ function App() {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(x, y, width, height);
         ctx.restore();
-        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position, item.shape, item.shapeScale);
+        drawCoverImage(ctx, collageImage, x + border, y + border, width - border * 2, height - border - captionSpace, item.scale, item.position, item.shape, item.shapeScale, item.adjustments);
       } else {
-        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position, item.shape, item.shapeScale);
+        drawCoverImage(ctx, collageImage, x, y, width, height, item.scale, item.position, item.shape, item.shapeScale, item.adjustments);
       }
     }
     for (const layer of imageLayers) {
@@ -1620,6 +1624,21 @@ function App() {
   const selectedText = textLayers.find((layer) => layer.id === selectedTextId);
   const selectedImageLayer = imageLayers.find((layer) => layer.id === selectedImageLayerId);
   const selectedCollageImage = collageImages.find((item) => item.id === selectedCollageImageId);
+  const activeAdjustments = selectedCollageImage?.adjustments ?? adjust;
+  function updateActiveAdjustments(patch: Partial<Adjustments>) {
+    if (selectedCollageImage) {
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, adjustments: { ...item.adjustments, ...patch } } : item));
+      return;
+    }
+    setAdjust((current) => ({ ...current, ...patch }));
+  }
+  function resetActiveAdjustments() {
+    if (selectedCollageImage) {
+      setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, adjustments: { ...defaultAdjustments } } : item));
+      return;
+    }
+    setAdjust({ ...defaultAdjustments });
+  }
   const selectedCollageTemplate = collageTemplateId ? collageTemplates.find((template) => template.id === collageTemplateId) : undefined;
   const activePreviewZoom = selectedCollageImage?.scale ?? zoom;
   const activePreviewZoomMinimum = selectedCollageImage ? 1 : 0.5;
@@ -1802,6 +1821,26 @@ function App() {
       </div>
     </section>
   );
+  const shapeModule = (
+    <section className="right-shape-module" aria-label="Shape crop controls">
+      <b>SHAPE CROP</b>
+      <div className="shape-grid">
+        {shapes.map((item) => (
+          <button className={(selectedCollageImage?.shape ?? shape) === item && item !== "original" ? "shape active" : "shape"} key={item} type="button" aria-pressed={(selectedCollageImage?.shape ?? shape) === item && item !== "original"} onClick={() => toggleShape(item)}>
+            <span className={`shape-icon ${item}`}>{shapeSymbol[item]}</span><small>{item[0].toUpperCase() + item.slice(1)}</small>
+          </button>
+        ))}
+      </div>
+      {shape === "polygon" && <div className="polygon-panel"><b>DIY polygon · {polygonPoints.length}/30 points</b><div><button className={addingPolygonPoint ? "active" : ""} type="button" onClick={() => setAddingPolygonPoint(true)} disabled={polygonPoints.length >= 30}>{addingPolygonPoint ? "Click the preview…" : "＋ Add point"}</button><button type="button" onClick={() => { setPolygonPoints(defaultPolygonPoints); setAddingPolygonPoint(false); }}>Restore</button></div></div>}
+      <div className="right-image-actions"><button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode((current) => current === "fit" ? "crop" : "fit")} disabled={!url}>{mode === "fit" ? "Return to crop" : "Fit full image"}</button><button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>{url && <button className="danger-action" type="button" onClick={removeBaseImage}>Remove main image</button>}</div>
+    </section>
+  );
+  const previewUtilityModule = (
+    <>
+      <div className="preview-pixel-readout" aria-label="Output pixel dimensions"><span>OUTPUT PIXELS</span><b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b></div>
+      <div className="preview-transform" aria-label="Preview controls"><div><button onClick={() => setRotation((rotation + 90) % 360)} disabled={!url}>↻ Rotate</button><button onClick={() => setFlipX(!flipX)} disabled={!url}>↔ Flip H</button><button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button><button onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center</button></div><span>{rotation}°</span></div>
+    </>
+  );
   const textModule = (
     <>
       <Step
@@ -1953,20 +1992,20 @@ function App() {
     <section className="preview-adjustments" aria-label="Light color and filter controls">
       <div className="adjustment-label">
         <b>LIGHT</b>
-        <small>Preview adjustment</small>
+        <small>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} adjustment` : "Main image adjustment"}</small>
       </div>
       <div className="adjustments compact-adjustments">
-        <RangeControl label="Brightness" min={0} max={200} value={adjust.brightness} onChange={(value) => setAdjust((current) => ({ ...current, brightness: value }))} />
-        <RangeControl label="Contrast" min={0} max={200} value={adjust.contrast} onChange={(value) => setAdjust((current) => ({ ...current, contrast: value }))} />
-        <RangeControl label="Saturation" min={0} max={200} value={adjust.saturation} onChange={(value) => setAdjust((current) => ({ ...current, saturation: value }))} />
+        <RangeControl label="Brightness" min={0} max={200} value={activeAdjustments.brightness} onChange={(value) => updateActiveAdjustments({ brightness: value })} />
+        <RangeControl label="Contrast" min={0} max={200} value={activeAdjustments.contrast} onChange={(value) => updateActiveAdjustments({ contrast: value })} />
+        <RangeControl label="Saturation" min={0} max={200} value={activeAdjustments.saturation} onChange={(value) => updateActiveAdjustments({ saturation: value })} />
       </div>
       <div className="filter-presets" aria-label="Quick filters">
-        <button type="button" onClick={() => setAdjust((current) => ({ ...current, grayscale: current.grayscale === 100 ? 0 : 100, sepia: 0, invert: 0 }))}>B&W</button>
-        <button type="button" onClick={() => setAdjust((current) => ({ ...current, sepia: current.sepia === 45 ? 0 : 45, grayscale: 0, invert: 0 }))}>Warm</button>
-        <button type="button" onClick={() => setAdjust((current) => ({ ...current, contrast: 112, saturation: 76, sepia: 18, grayscale: 0, invert: 0 }))}>Vintage</button>
-        <button type="button" onClick={() => setAdjust((current) => ({ ...current, hue: 190, saturation: 110, grayscale: 0, sepia: 0, invert: 0 }))}>Cool</button>
+        <button type="button" onClick={() => updateActiveAdjustments({ grayscale: activeAdjustments.grayscale === 100 ? 0 : 100, sepia: 0, invert: 0 })}>B&W</button>
+        <button type="button" onClick={() => updateActiveAdjustments({ sepia: activeAdjustments.sepia === 45 ? 0 : 45, grayscale: 0, invert: 0 })}>Warm</button>
+        <button type="button" onClick={() => updateActiveAdjustments({ contrast: 112, saturation: 76, sepia: 18, grayscale: 0, invert: 0 })}>Vintage</button>
+        <button type="button" onClick={() => updateActiveAdjustments({ hue: 190, saturation: 110, grayscale: 0, sepia: 0, invert: 0 })}>Cool</button>
       </div>
-      <button className="adjustments-reset" type="button" onClick={() => setAdjust({ brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0, sepia: 0, invert: 0 })}>Reset</button>
+      <button className="adjustments-reset" type="button" onClick={resetActiveAdjustments}>Reset</button>
     </section>
   );
   return (
@@ -2011,6 +2050,7 @@ function App() {
               }}
             />
             {/*
+            <div className="deprecated-export-controls">
             <Step
               n="01"
               title="Layers & collage"
@@ -2069,6 +2109,7 @@ function App() {
               </div>
             </div>
             */}
+            {shapeModule}
             {textModule}
             <Step
               n="04"
@@ -2478,6 +2519,7 @@ function App() {
                 Enter either cm or inch; the other unit is shown automatically.
               </small>
             </div>
+            {/*
             <Step
               n="06"
               title="Export image"
@@ -2491,6 +2533,7 @@ function App() {
                 {mode === "fit" ? "Return to crop" : "Fit with padding"}<small>{mode === "fit" ? "Use the selected canvas crop" : "Keep the full image"}</small>
               </button>
             </div>
+            */}
           </aside>
           <section className="preview">
             <div className="preview-head">
@@ -2518,7 +2561,11 @@ function App() {
                       onKeyDown={(event) => {
                         if (event.key !== "Enter") return;
                         event.preventDefault();
-                        togglePreset(item);
+                        if (sizeSelected && preset.id === item.id) commitCrop();
+                        else {
+                          togglePreset(item);
+                          setCropCommitted(true);
+                        }
                       }}
                     >
                       <b>{item.group}</b>
@@ -2542,11 +2589,11 @@ function App() {
                     if (event.key !== "Enter") return;
                     event.preventDefault();
                     if (sizeSelected && preset.id === "custom") {
-                      setBatchPresetIds([]);
-                      setSizeSelected(false);
-                      return;
+                      commitCrop();
+                    } else {
+                      chooseCustomSize();
+                      setCropCommitted(true);
                     }
-                    chooseCustomSize();
                   }}
                 >
                   <b>Custom</b>
@@ -2603,18 +2650,22 @@ function App() {
                       }}
                     />
                   )}
-                  {url && (shape === "original" ? (
-                    <img src={url} alt="Preview" className="preview-image" style={previewStyle} />
-                  ) : (
-                    <div className={`main-shape-frame ${shape}`} style={shapePreviewStyle(shape, shapeScale, polygonPoints)}>
-                      <img src={url} alt="Preview" className="preview-image" style={previewStyle} />
-                    </div>
-                  ))}
+                  {url && <div className="main-crop-frame" style={cropCommitted ? { clipPath: `inset(${crop.y * 100}% ${(1 - crop.x - crop.width) * 100}% ${(1 - crop.y - crop.height) * 100}% ${crop.x * 100}%)` } : undefined}>
+                    {shape === "original" ? <img src={url} alt="Preview" className="preview-image" style={previewStyle} /> : <div className={`main-shape-frame ${shape}`} style={shapePreviewStyle(shape, shapeScale, polygonPoints)}><img src={url} alt="Preview" className="preview-image" style={previewStyle} /></div>}
+                  </div>}
                   {url && selectedBaseImage && <div className="base-image-selection" aria-label="Selected main image" />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
                     const booth = ["five", "seven", "eight"].includes(selectedCollageTemplate.id) ? " photo-booth" : "";
-                    return item ? <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}><img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})` }} /></div>{item.id === selectedCollageImageId && <><button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button><button className="collage-delete-handle" aria-label={`Delete collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeCollageImage(item.id); }}>×</button></>}</div> : <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onKeyDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? [], index); event.target.value = ""; }} /><span>＋</span></label>;
+                    if (item) {
+                      return <div key={item.id} className={`${item.id === selectedCollageImageId ? "collage-tile selected" : "collage-tile"}${booth}${item.scale > 1 ? " movable" : ""}`} onPointerDown={(event) => beginCollageDrag(event, item)} onPointerUp={endCollageInteraction} onPointerCancel={endCollageInteraction} onClick={(event) => { event.stopPropagation(); completePreviewSelection("collage", item.id); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}>
+                        <div className={`collage-shape-frame ${item.shape}`} style={collageShapeStyle(item.shape, slot, item.shapeScale)}>
+                          <img src={item.url} alt={`Collage tile ${index + 1}`} style={{ transform: `translate(${(0.5 - item.position.x) * (item.scale - 1) * 200}%, ${(0.5 - item.position.y) * (item.scale - 1) * 200}%) scale(${item.scale})`, filter: filterValueFor(item.adjustments) }} />
+                        </div>
+                        {item.id === selectedCollageImageId && <><button className="collage-resize-handle" aria-label="Zoom collage tile" onPointerDown={(event) => beginCollageResize(event, item)}>↘</button><button className="collage-delete-handle" aria-label={`Delete collage tile ${index + 1}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeCollageImage(item.id); }}>×</button></>}
+                      </div>;
+                    }
+                    return <label key={`empty-${index}`} className={`collage-tile empty${booth}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} style={{ left: `${slot.x * 100}%`, top: `${slot.y * 100}%`, width: `${slot.w * 100}%`, height: `${slot.h * 100}%` }}><input className="collage-slot-input" type="file" accept="image/*" aria-label={`Upload image to collage tile ${index + 1}`} onPointerDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onClick={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onKeyDown={(event) => { event.stopPropagation(); prepareCollageUpload(index); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { addCollageImages(event.target.files ?? [], index); event.target.value = ""; }} /><span>＋</span></label>;
                   })}
                   {imageLayers.map((layer) => (
                     <div
@@ -2628,7 +2679,7 @@ function App() {
                       {layer.id === selectedImageLayerId && <button className="image-layer-resize-handle" aria-label="Resize image layer" onPointerDown={(event) => beginLayerResize(event, layer)}>↘</button>}
                     </div>
                   ))}
-                  {url && sizeSelected && mode === "crop" && shape !== "polygon" && (
+                  {url && sizeSelected && mode === "crop" && !cropCommitted && shape !== "polygon" && (
                     <div
                       className="crop editable"
                       style={{
@@ -2869,6 +2920,7 @@ function App() {
                 </label>
               )}
             </div>
+            {previewUtilityModule}
             <div className="preview-zoom-row">
               <div className="preview-canvas-tools" aria-label="Canvas controls">
                 <strong>ZOOM</strong>

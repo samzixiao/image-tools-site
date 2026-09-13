@@ -37,6 +37,13 @@ for (const contract of [
   'prepareCollageUpload(index);',
   'function addCollageImages(files: FileList | File[], targetSlot?: number)',
   'addCollageImages(event.target.files ?? [], index);',
+  'adjustments: { ...defaultAdjustments }',
+  'function updateActiveAdjustments(patch: Partial<Adjustments>)',
+  'filter: filterValueFor(item.adjustments)',
+  'function commitCrop()',
+  'cropCommitted ? { clipPath:',
+  'className="right-shape-module"',
+  'const previewUtilityModule = (',
   'const activePreviewZoom = selectedCollageImage?.scale ?? zoom;',
   'const activeShapeScale = selectedCollageImage?.shapeScale ?? shapeScale;',
   '(selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")',
@@ -151,6 +158,7 @@ assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(style
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
 assert.ok(source.includes("const start = targetSlot ?? collageUploadStartRef.current ?? 0;"), "Each collage upload must target its clicked tile explicitly");
+assert.ok(styles.includes(".main-crop-frame") && styles.includes(".right-shape-module"), "Committed crop and right-side editor controls must retain their layout styles");
 assert.ok(/\.privacy-mask-preview\s*\{[\s\S]*?border:\s*2px solid var\(--accent\);[\s\S]*?background:\s*transparent;/.test(styles), "Mosaic preview must use the module border style without a transparent checker fill");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
