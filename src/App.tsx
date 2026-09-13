@@ -150,6 +150,12 @@ const presets: Preset[] = [
     height: 630,
   },
 ];
+// Square presets share the same crop interaction. Keep the social square as the
+// single visible 1:1 choice; marketplace-specific output resolutions remain
+// available through the SEO links and the custom-size picker.
+const visibleCanvasPresets = presets.filter(
+  (item) => item.id !== "amazon" && item.id !== "shopify",
+);
 const shapes: Shape[] = [
   "original",
   "circle",
@@ -473,6 +479,10 @@ function App() {
     setUrl(nextUrl);
     setOriginalUrl(nextUrl);
     setSelectedBaseImage(false);
+    setSizeSelected(false);
+    setBatchPresetIds([]);
+    setCrop({ x: 0, y: 0, width: 1, height: 1 });
+    setCropCommitted(false);
     setImageOffset({ x: 0, y: 0 });
     setPresetFrameOffset({ x: 0, y: 0 });
     setPresetFrameScale(1);
@@ -551,6 +561,15 @@ function App() {
   }
   function commitCrop() {
     if (!url || !sizeSelected) return;
+    // The visible frame is what the user has positioned and resized. Persist
+    // those normalized coordinates before hiding the editor frame so every
+    // aspect ratio, including 1:1 and 2000×1600, exports that exact area.
+    setCrop({
+      x: visibleCropFrame.x,
+      y: visibleCropFrame.y,
+      width: visibleCropFrame.width,
+      height: visibleCropFrame.height,
+    });
     setMode("crop");
     setCropCommitted(true);
   }
@@ -1496,7 +1515,9 @@ function App() {
         sy = mode === "fit" ? 0 : natural.height * crop.y,
         sw = mode === "fit" ? natural.width : natural.width * crop.width,
         sh = mode === "fit" ? natural.height : natural.height * crop.height,
-        scale = Math.min(canvas.width / sw, canvas.height / sh),
+        scale = mode === "fit"
+          ? Math.min(canvas.width / sw, canvas.height / sh)
+          : Math.max(canvas.width / sw, canvas.height / sh),
         drawWidth = sw * scale,
         drawHeight = sh * scale,
         destinationX = mode === "fit" ? (canvas.width - drawWidth) * fitPosition.x : (canvas.width - drawWidth) / 2,
@@ -1600,7 +1621,9 @@ function App() {
         const sy = mode === "fit" ? 0 : natural.height * targetCrop.y;
         const sw = mode === "fit" ? natural.width : natural.width * targetCrop.width;
         const sh = mode === "fit" ? natural.height : natural.height * targetCrop.height;
-        const scale = Math.min(canvas.width / sw, canvas.height / sh);
+        const scale = mode === "fit"
+          ? Math.min(canvas.width / sw, canvas.height / sh)
+          : Math.max(canvas.width / sw, canvas.height / sh);
         const drawWidth = sw * scale;
         const drawHeight = sh * scale;
         const destinationX = mode === "fit" ? (canvas.width - drawWidth) * fitPosition.x : (canvas.width - drawWidth) / 2;
@@ -1704,6 +1727,11 @@ function App() {
     setFileName("");
     setNatural({ width: 0, height: 0 });
     setSizeSelected(false);
+    setBatchPresetIds([]);
+    setCrop({ x: 0, y: 0, width: 1, height: 1 });
+    setCropCommitted(false);
+    setPresetFrameOffset({ x: 0, y: 0 });
+    setPresetFrameScale(1);
     setSelectedBaseImage(false);
   }
   function toggleBaseImage() {
@@ -2467,7 +2495,7 @@ function App() {
               <b>CANVAS SIZES</b>
               <small>Pick one output size. Click the active size again to clear it; the preview remains square.</small>
                 <div className="batch-options">
-                  {presets.map((item) => {
+                  {visibleCanvasPresets.map((item) => {
                   const selected = sizeSelected && preset.id === item.id;
                   return (
                     <button
