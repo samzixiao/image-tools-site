@@ -1754,16 +1754,16 @@ function App() {
   }
   const imageLayersModule = (
     <>
-      <Step n="01" title="Image layers" sub="Stack, reorder, and position extra images" />
       <div className="layers-panel">
         <div className="layer-section">
-          <b>Image layers</b>
+          <b>All layers</b>
           <button disabled={!url && !selectedCollageTemplate} onClick={() => layerInput.current?.click()}>＋ Add image layers</button>
           <input ref={layerInput} type="file" accept="image/*" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { addImageLayers(event.target.files ?? []); event.target.value = ""; }} />
           {(url || imageLayers.length > 0 || collageImages.length > 0) && (
             <div className="layer-list">
               {url && <div className="layer-row"><button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button><button className="layer-delete" type="button" aria-label="Delete main image" onClick={removeBaseImage}>×</button></div>}
               {imageLayers.map((layer, index) => <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>)}
+              {collageImages.map((item) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Collage tile {item.slotIndex + 1} · {item.name}</button>)}
             </div>
           )}
           {selectedImageLayer && (
@@ -1774,7 +1774,17 @@ function App() {
               <button onClick={() => removeImageLayer(selectedImageLayer.id)}>Delete layer</button>
             </div>
           )}
-          <small>Add as many images as needed. Drag a layer directly in the preview to reposition it.</small>
+          {selectedCollageImage && (
+            <div className="layer-controls">
+              <label>Tile shape
+                <select value={selectedCollageImage.shape} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: event.target.value as CollageImage["shape"] } : item))}>
+                  {shapes.filter((item): item is CollageImage["shape"] => item !== "polygon").map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
+                </select>
+              </label>
+              <button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button>
+            </div>
+          )}
+          <small>Select any main, extra, or collage image here. Drag an image directly in the preview to reposition it.</small>
         </div>
       </div>
     </>
@@ -1787,18 +1797,7 @@ function App() {
           <div className="collage-templates">
             {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
           </div>
-          {collageImages.length > 0 && <div className="layer-list">{collageImages.map((item) => <button key={item.id} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Tile {item.slotIndex + 1} · {item.name}</button>)}</div>}
-          {selectedCollageImage && (
-            <div className="layer-controls">
-              <label>Tile shape
-                <select value={selectedCollageImage.shape} onChange={(event) => setCollageImages((current) => current.map((item) => item.id === selectedCollageImage.id ? { ...item, shape: event.target.value as CollageImage["shape"] } : item))}>
-                  {shapes.filter((item): item is CollageImage["shape"] => item !== "polygon").map((item) => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}
-                </select>
-              </label>
-              <button onClick={() => removeCollageImage(selectedCollageImage.id)}>Remove tile</button>
-            </div>
-          )}
-          <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
+          <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile from All layers to edit it.` : "Choose a collage template to start. Click it again to cancel."}</small>
         </div>
       </div>
     </section>
@@ -1961,6 +1960,12 @@ function App() {
         <RangeControl label="Contrast" min={0} max={200} value={adjust.contrast} onChange={(value) => setAdjust((current) => ({ ...current, contrast: value }))} />
         <RangeControl label="Saturation" min={0} max={200} value={adjust.saturation} onChange={(value) => setAdjust((current) => ({ ...current, saturation: value }))} />
       </div>
+      <div className="filter-presets" aria-label="Quick filters">
+        <button type="button" onClick={() => setAdjust((current) => ({ ...current, grayscale: current.grayscale === 100 ? 0 : 100, sepia: 0, invert: 0 }))}>B&W</button>
+        <button type="button" onClick={() => setAdjust((current) => ({ ...current, sepia: current.sepia === 45 ? 0 : 45, grayscale: 0, invert: 0 }))}>Warm</button>
+        <button type="button" onClick={() => setAdjust((current) => ({ ...current, contrast: 112, saturation: 76, sepia: 18, grayscale: 0, invert: 0 }))}>Vintage</button>
+        <button type="button" onClick={() => setAdjust((current) => ({ ...current, hue: 190, saturation: 110, grayscale: 0, sepia: 0, invert: 0 }))}>Cool</button>
+      </div>
       <button className="adjustments-reset" type="button" onClick={() => setAdjust({ brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0, grayscale: 0, sepia: 0, invert: 0 })}>Reset</button>
     </section>
   );
@@ -2005,7 +2010,7 @@ function App() {
                 event.target.value = "";
               }}
             />
-            <div className="legacy-layers-module" aria-hidden="true">
+            {/*
             <Step
               n="01"
               title="Layers & collage"
@@ -2063,9 +2068,8 @@ function App() {
                 <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
               </div>
             </div>
-            </div>
+            */}
             {textModule}
-            {adjustmentsModule}
             <Step
               n="04"
               title="Privacy cover"
@@ -2558,6 +2562,7 @@ function App() {
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
+              {adjustmentsModule}
             </aside>
             <div className="preview-center-column">
             <div
