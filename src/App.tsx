@@ -563,9 +563,9 @@ function App() {
     setBatchPresetIds([next.id]);
     choosePreset(next);
   }
-  function chooseCustomRatio() {
-    const width = Math.max(0.01, Number(customRatio.width));
-    const height = Math.max(0.01, Number(customRatio.height));
+  function chooseCustomRatio(nextRatio = customRatio) {
+    const width = Math.max(0.01, Number(nextRatio.width));
+    const height = Math.max(0.01, Number(nextRatio.height));
     const longEdge = 2000;
     const outputWidth = Math.max(1, Math.round((width / Math.max(width, height)) * longEdge));
     const outputHeight = Math.max(1, Math.round((height / Math.max(width, height)) * longEdge));
@@ -573,6 +573,12 @@ function App() {
     setCustom({ width: outputWidth, height: outputHeight });
     setBatchPresetIds([]);
     choosePreset({ id: "custom", group: "Custom", name: "自定义比例", en: "Custom ratio", width: outputWidth, height: outputHeight });
+  }
+  function updateCustomRatio(part: "width" | "height", value: number) {
+    const nextRatio = { ...customRatio, [part]: value };
+    setCustomRatio(nextRatio);
+    if (Number.isFinite(nextRatio.width) && Number.isFinite(nextRatio.height) && nextRatio.width > 0 && nextRatio.height > 0)
+      chooseCustomRatio(nextRatio);
   }
   function commitCrop() {
     if (!url || !sizeSelected) return;
@@ -2564,9 +2570,9 @@ function App() {
               </div>
               {preset.id === "custom" && (
                 <div className="batch-custom-size">
-                  <label>Ratio width <input type="number" min="0.01" step="0.01" value={customRatio.width} onChange={(event) => setCustomRatio({ ...customRatio, width: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
+                  <label>Ratio width <input type="number" min="0.01" step="0.01" value={customRatio.width} onChange={(event) => updateCustomRatio("width", Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
                   <b>:</b>
-                  <label>Ratio height <input type="number" min="0.01" step="0.01" value={customRatio.height} onChange={(event) => setCustomRatio({ ...customRatio, height: Number(event.target.value) })} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
+                  <label>Ratio height <input type="number" min="0.01" step="0.01" value={customRatio.height} onChange={(event) => updateCustomRatio("height", Number(event.target.value))} onKeyDown={(event) => { if (event.key === "Enter") chooseCustomRatio(); }} /></label>
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>

@@ -3346,20 +3346,33 @@ footer {
 .left-privacy-module .sticker-panel > div button {
   min-height: 32px;
   padding: 5px 2px;
-  font-size: 17px;
+  font-size: 18px;
   color: var(--text-on-dark);
 }
 .left-privacy-module .sticker-panel > div .mosaic-picker {
   color: #ffffff;
-  font-size: 19px;
+  font-size: 20px;
 }
 .left-privacy-module .sticker-custom-spacer { display: block; }
 .left-privacy-module .sticker-panel > div .sticker-custom-add {
   color: #ffffff;
   background: #394039;
   border-color: #687464;
-  font-size: 20px;
+  font-size: 21px;
 }
+.workspace .preview-size-tools,
+.workspace .left-text-module,
+.workspace .left-privacy-module,
+.workspace .right-shape-module,
+.workspace .controls .layers-panel,
+.workspace .controls .measure-module,
+.workspace .preview-adjustments,
+.workspace .preview-collage-dock { font-size: 13px; }
+.preview-size-tools .batch-option b { font-size: 11px; }
+.preview-size-tools .batch-option span,
+.preview-size-tools .batch-option small { font-size: 10px; }
+.right-shape-module .shape small { font-size: 10px; }
+.workspace .shape-icon { font-size: 21px; }
 .stage,
 .stage img,
 .preview-image,

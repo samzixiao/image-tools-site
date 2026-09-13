@@ -97,7 +97,7 @@ for (const contract of [
   'className="adjustments compact-adjustments"',
   'className="danger-action"',
   'useState("#1f2120")',
-  'function chooseCustomRatio()',
+  'function chooseCustomRatio(nextRatio = customRatio)',
   'function centeredCropForAspect(width: number, height: number, targetAspect: number)',
   'const cropAspectRef = useRef(1);',
   'cropAspectRef.current = aspect;',
@@ -154,7 +154,9 @@ assert.ok(source.includes('function confirmSelectedCrop(event: KeyboardEvent)') 
 assert.ok(source.includes('setCrop({\n      x: visibleCropFrame.x,') && source.includes('width: visibleCropFrame.width,'), "Crop commit must persist the visible frame coordinates");
 assert.ok(source.includes('const cropRatioPresets: CropRatioPreset[]') && source.includes('ratio: "21:9"') && source.includes('ratio: "4:5"'), "Crop ratio selection must include the common editing ratios");
 assert.ok(source.includes('<b>CROP RATIOS</b>') && source.includes('<small>{item.en}</small>'), "Canvas selection must present ratios instead of pixel dimensions");
-assert.ok(source.includes('function chooseCustomRatio()') && source.includes('Ratio width') && source.includes('Ratio height'), "Custom crop selection must use a ratio rather than pixels");
+assert.ok(source.includes('function chooseCustomRatio(nextRatio = customRatio)') && source.includes('Ratio width') && source.includes('Ratio height'), "Custom crop selection must use a ratio rather than pixels");
+assert.ok(source.includes('function updateCustomRatio(part: "width" | "height", value: number)') && source.includes('chooseCustomRatio(nextRatio);'), "Custom ratios must update the crop immediately while typing");
+assert.ok(styles.includes('.workspace .shape-icon { font-size: 21px; }') && styles.includes('font-size: 18px;'), "Main editor shapes and privacy stickers must use the enlarged controls");
 assert.ok(source.includes('scale = mode === "fit"\n          ? Math.min(canvas.width / sw, canvas.height / sh)\n          : Math.max(canvas.width / sw, canvas.height / sh)') && source.includes('const scale = mode === "fit"\n          ? Math.min(canvas.width / sw, canvas.height / sh)\n          : Math.max(canvas.width / sw, canvas.height / sh);'), "Crop exports must fill their selected output canvas");
 assert.ok(source.includes('function removeBaseImage()') && source.includes('setBatchPresetIds([]);\n    setCrop({ x: 0, y: 0, width: 1, height: 1 });\n    setCropCommitted(false);'), "Removing the main image must reset the crop selection state");
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
