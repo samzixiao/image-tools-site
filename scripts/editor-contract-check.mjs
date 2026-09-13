@@ -148,9 +148,16 @@ assert.ok(styles.includes(".compact-adjustments") && styles.includes(".danger-ac
 assert.ok(styles.includes(".preview-layers-dock"), "Layer controls must remain available after the left module is removed");
 assert.ok(!styles.includes("transition: transform 0.2s ease;"), "Image dragging must not be delayed by a transform transition");
 assert.ok(styles.includes(".main-shape-frame") && styles.includes(".preview-zoom-row"), "Shape clipping must be independent from image zoom controls");
-assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".controls .preview-adjustments"), "Collage, layers, and light controls must use their assigned layout docks");
+assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".preview-bottom-docks") && styles.includes(".preview-center-column > .preview-adjustments"), "Collage, layers, and light controls must use their assigned layout docks");
 assert.ok(!source.includes('<div className="legacy-layers-module"'), "The retired duplicate layer module must not mount");
-assert.ok(styles.includes(".preview-size-tools .preview-adjustments") && source.includes('aria-label="Quick filters"'), "Light controls and quick filters must stay below canvas sizes");
+assert.ok(source.includes('onKeyDown={(event) => {\n                        if (event.key !== "Enter") return;') && source.includes('commitCrop();'), "Pressing Enter on an active size must commit the crop");
+assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
+assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
+assert.ok(source.indexOf('<div className="preview-bottom-docks">') < source.indexOf("{adjustmentsModule}"), "Collage controls must appear before light controls");
+assert.ok(styles.includes(".workspace") && styles.includes("grid-template-columns: minmax(0, 1fr) 390px") && styles.includes(".preview-workarea") && styles.includes("grid-template-columns: 176px minmax(0, 1fr)"), "Workspace must retain left, center, and right columns with preview at the center top");
+const retiredSideToolsStyle = styles.match(/\.preview-side-tools\s*\{([^}]*)\}/)?.[1] ?? "";
+assert.ok(retiredSideToolsStyle.includes("display: none") && !retiredSideToolsStyle.includes("display: grid"), "The retired fourth control column must stay hidden");
+assert.ok(source.includes('aria-label="Quick filters"'), "Light controls and quick filters must remain available below the preview workflow");
 assert.ok(styles.includes(".preview-center-column"), "Preview controls must stay in the center column below the canvas");
 assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\s\S]*?display:\s*none\s*!important;/.test(styles), "The old duplicate text module must stay hidden");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
