@@ -1825,8 +1825,8 @@ function App() {
     <section className="right-shape-module" aria-label="Shape crop controls">
       <b>SHAPE CROP</b>
       <div className="shape-grid">
-        {shapes.map((item) => (
-          <button className={(selectedCollageImage?.shape ?? shape) === item && item !== "original" ? "shape active" : "shape"} key={item} type="button" aria-pressed={(selectedCollageImage?.shape ?? shape) === item && item !== "original"} onClick={() => toggleShape(item)}>
+        {shapes.filter((item) => item !== "original").map((item) => (
+          <button className={(selectedCollageImage?.shape ?? shape) === item ? "shape active" : "shape"} key={item} type="button" aria-pressed={(selectedCollageImage?.shape ?? shape) === item} onClick={() => toggleShape(item)}>
             <span className={`shape-icon ${item}`}>{shapeSymbol[item]}</span><small>{item[0].toUpperCase() + item.slice(1)}</small>
           </button>
         ))}
@@ -1978,9 +1978,8 @@ function App() {
     <section className="left-privacy-module" aria-label="Privacy cover">
       <Step n="04" title="Privacy cover" sub="Mosaic or cover a detail in the preview" />
       <div className="sticker-panel">
-        <div>{privacyStickers.map((item) => <button key={item} className={privacySticker === item ? "active" : ""} onClick={() => { setPrivacySticker(item); if (url || selectedCollageTemplate) setPlacingSticker(true); }} title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}>{item === "mosaic" ? "▦" : item}</button>)}</div>
+        <div>{privacyStickers.map((item) => <button key={item} className={`${privacySticker === item ? "active" : ""} ${item === "mosaic" ? "mosaic-picker" : ""}`} onClick={() => { setPrivacySticker(item); if (url || selectedCollageTemplate) setPlacingSticker(true); }} title={item === "mosaic" ? "Mosaic" : "Privacy sticker"}>{item === "mosaic" ? "▦" : item}</button>)}<span className="sticker-custom-spacer" aria-hidden="true" /><button className="sticker-custom-add" onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate} title="Add custom sticker">＋</button></div>
         <label>Size <input type="range" min="4" max="70" value={stickerSize} onChange={(event) => { const size = Number(event.target.value); setStickerSize(size); if (selectedCoverId !== null) setPrivacyCovers((current) => current.map((cover) => cover.id === selectedCoverId ? { ...cover, size } : cover)); }} /></label>
-        <button onClick={() => privacyInput.current?.click()} disabled={!url && !selectedCollageTemplate}>Add custom sticker</button>
         <input ref={privacyInput} type="file" accept="image/*" hidden onChange={(event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setPrivacySticker(URL.createObjectURL(file)); setPlacingSticker(true); event.target.value = ""; }} />
         <button className={placingSticker ? "place active" : "place"} disabled={!privacySticker || (!url && !selectedCollageTemplate)} onClick={() => setPlacingSticker(true)}>{placingSticker ? "Click the image…" : "Place on image"}</button>
         <button onClick={() => { if (selectedCoverId !== null) removePrivacyCover(selectedCoverId); }} disabled={selectedCoverId === null}>Delete selected</button>
@@ -2111,7 +2110,6 @@ function App() {
             </div>
             */}
             {shapeModule}
-            {textModule}
             <div className="legacy-text-module" aria-hidden="true">
             <Step
               n="04"
@@ -2273,6 +2271,7 @@ function App() {
               Reset all edits
             </button>
             </div>
+            {imageLayersModule}
             <Step
               n="05"
               title="Product details"
@@ -2427,7 +2426,6 @@ function App() {
                 Enter either cm or inch; the other unit is shown automatically.
               </small>
             </div>
-            {imageLayersModule}
             {/*
             <Step
               n="06"
@@ -2518,6 +2516,7 @@ function App() {
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
+              <div className="left-text-module">{textModule}</div>
               {privacyModule}
             </aside>
             <div className="preview-center-column">

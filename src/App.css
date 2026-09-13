@@ -3187,6 +3187,9 @@ footer {
 }
 .preview-center-column {
   max-width: 760px;
+  position: sticky;
+  top: calc(var(--topbar-h) + 12px);
+  align-self: start;
 }
 .preview-size-tools {
   padding: 10px;
@@ -3194,13 +3197,13 @@ footer {
   border-color: var(--border-dark);
 }
 .preview-size-tools .batch-options {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 .preview-size-tools .batch-option {
   min-width: 0;
-  min-height: 50px;
-  padding: 4px 2px;
+  min-height: 54px;
+  padding: 5px 3px;
   text-align: center;
 }
 .preview-size-tools .batch-option b,
@@ -3209,7 +3212,7 @@ footer {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.25;
 }
 .left-privacy-module {
@@ -3219,6 +3222,12 @@ footer {
   padding-top: 10px;
   border-top: 1px solid var(--border-dark);
 }
+.left-text-module {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-dark);
+}
+.left-text-module .caption-module { margin-top: 7px; }
 .left-privacy-module .step { padding: 0; }
 .left-privacy-module .step p,
 .left-privacy-module .step small,
@@ -3238,9 +3247,24 @@ footer {
   border-color: var(--border-dark);
 }
 .right-shape-module > b { color: var(--text-on-dark); }
-.right-shape-module .shape-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-.right-shape-module .shape { min-width: 0; padding: 4px 1px; }
-.right-shape-module .shape small { font-size: 8px; }
+.right-shape-module .shape-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.right-shape-module .shape { min-width: 0; padding: 5px 2px; }
+.right-shape-module .shape small { font-size: 9px; }
+.right-image-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.right-image-actions button,
+.controls .caption-add,
+.controls .measure-add {
+  min-width: 0;
+  background: #394039 !important;
+  border-color: #687464 !important;
+  color: #f5f7ef !important;
+}
+.right-image-actions button:hover:not(:disabled),
+.controls .caption-add:hover:not(:disabled),
+.controls .measure-add:hover:not(:disabled) {
+  background: #4a5549 !important;
+  color: #ffffff !important;
+}
 .controls .step > div p,
 .controls .step > div small,
 .controls .caption-direct-edit,
@@ -3262,22 +3286,43 @@ footer {
   display: block;
   margin-top: 8px;
 }
-.preview-collage-dock { padding: 8px 10px; }
+.preview-collage-dock { padding: 12px 14px; }
 .preview-collage-heading { display: flex; align-items: baseline; gap: 8px; }
-.preview-collage-dock .collage-templates { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
-.preview-collage-dock .collage-templates button { min-width: 0; padding: 5px 2px; font-size: 9px; }
+.preview-collage-dock .collage-templates { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+.preview-collage-dock .collage-templates button { min-width: 0; padding: 8px 4px; font-size: 11px; }
 .preview-center-column > .preview-adjustments { margin-top: 8px; }
 .preview-adjustments { padding: 8px 10px; }
 .preview-adjustments .compact-adjustments { gap: 6px; }
 .controls .layers-panel { margin-top: 10px; }
 .controls .layer-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .controls .layer-list .layer-row { grid-column: 1 / -1; }
+.left-privacy-module .sticker-panel > div {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.left-privacy-module .sticker-panel > div button {
+  min-height: 32px;
+  padding: 5px 2px;
+  font-size: 17px;
+  color: var(--text-on-dark);
+}
+.left-privacy-module .sticker-panel > div .mosaic-picker {
+  color: #ffffff;
+  font-size: 19px;
+}
+.left-privacy-module .sticker-custom-spacer { display: block; }
+.left-privacy-module .sticker-panel > div .sticker-custom-add {
+  color: #ffffff;
+  background: #394039;
+  border-color: #687464;
+  font-size: 20px;
+}
 
 @media (max-width: 1180px) {
   .workspace { grid-template-columns: minmax(0, 1fr) 320px; }
   .preview-workarea { grid-template-columns: 250px minmax(0, 1fr); }
   .preview-head { margin-left: 266px; width: min(100% - 266px, 760px); }
   .preview-size-tools .batch-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .right-shape-module .shape-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .right-shape-module .shape-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .preview-collage-dock .collage-templates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }

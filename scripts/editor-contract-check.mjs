@@ -153,7 +153,12 @@ assert.ok(source.includes('onKeyDown={(event) => {\n                        if (
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf('<div className="preview-bottom-docks">') < source.indexOf("{adjustmentsModule}"), "Collage controls must appear before light controls");
+assert.ok(source.includes('shapes.filter((item) => item !== "original")'), "The shape chooser must not show the Original option");
+assert.ok(source.indexOf('<div className="left-text-module">{textModule}</div>') < source.indexOf('{privacyModule}'), "Text controls must appear above privacy controls in the left column");
+assert.ok(source.indexOf('{imageLayersModule}') < source.indexOf('n="05"'), "Layers must appear directly below the shape controls before dimension arrows");
 assert.ok(styles.includes(".workspace") && styles.includes("grid-template-columns: minmax(0, 1fr) 390px") && styles.includes(".preview-workarea") && styles.includes("grid-template-columns: 318px minmax(0, 1fr)"), "Workspace must retain left, center, and right columns with preview at the center top");
+assert.ok(styles.includes("position: sticky") && styles.includes(".right-image-actions { grid-template-columns: repeat(3"), "Preview controls must stay fixed and image actions must remain on one row");
+assert.ok(styles.includes("grid-template-columns: repeat(5, minmax(0, 1fr))") && styles.includes(".sticker-custom-add"), "Privacy stickers must use the five-column grid with a custom add control");
 const retiredSideToolsStyle = styles.match(/\.preview-side-tools\s*\{([^}]*)\}/)?.[1] ?? "";
 assert.ok(retiredSideToolsStyle.includes("display: none") && !retiredSideToolsStyle.includes("display: grid"), "The retired fourth control column must stay hidden");
 assert.ok(source.includes('aria-label="Quick filters"'), "Light controls and quick filters must remain available below the preview workflow");
