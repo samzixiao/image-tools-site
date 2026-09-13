@@ -1836,10 +1836,7 @@ function App() {
     </section>
   );
   const previewUtilityModule = (
-    <>
-      <div className="preview-pixel-readout" aria-label="Output pixel dimensions"><span>OUTPUT PIXELS</span><b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b></div>
-      <div className="preview-transform" aria-label="Preview controls"><div><button onClick={() => setRotation((rotation + 90) % 360)} disabled={!url}>↻ Rotate</button><button onClick={() => setFlipX(!flipX)} disabled={!url}>↔ Flip H</button><button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button><button onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center</button></div><span>{rotation}°</span></div>
-    </>
+    <div className="preview-pixel-readout" aria-label="Output pixel dimensions"><span>OUTPUT PIXELS</span><b>{sizeSelected ? `${output.width} × ${output.height} px` : "Original image size"}</b></div>
   );
   const textModule = (
     <>
@@ -2609,7 +2606,6 @@ function App() {
                 </div>
               )}
               <span className="preview-size-count">{sizeSelected ? "1 size selected" : "No size selected"}</span>
-              {adjustmentsModule}
             </aside>
             <div className="preview-center-column">
             <div
@@ -2948,6 +2944,7 @@ function App() {
                 </div>
               )}
             </div>
+            <div className="preview-transform" aria-label="Preview controls"><div><button onClick={() => setRotation((rotation + 90) % 360)} disabled={!url}>↻ Rotate</button><button onClick={() => setFlipX(!flipX)} disabled={!url}>↔ Flip H</button><button onClick={() => setFlipY(!flipY)} disabled={!url}>↕ Flip V</button><button onClick={() => setImageOffset({ x: 0, y: 0 })} disabled={!url}>Center</button></div><span>{rotation}°</span></div>
             <div className="preview-foot">
               <span>
                 {url
@@ -2963,6 +2960,7 @@ function App() {
                 {imageLayersModule}
               </div>
             </div>
+            {adjustmentsModule}
             <div className="export">
               <label>
                 Format{" "}
@@ -2993,6 +2991,7 @@ function App() {
               </button>
             </div>
             </div>
+            {/* Legacy fourth-column controls are intentionally not mounted. The active controls live in the left, center, and right workspace columns.
             <aside className="preview-side-tools" aria-label="Shape and preview actions">
               <div className="preview-shape-selector">
                 <b>SHAPE CROP</b>
@@ -3062,7 +3061,7 @@ function App() {
                   Remove main image
                 </button>
               )}
-            </aside>
+            </aside> */}
             </div>
           </section>
         </section>

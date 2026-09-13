@@ -2085,7 +2085,6 @@ footer {
 .preview-side-tools {
   display: none;
   min-width: 0;
-  display: grid;
   gap: 7px;
   padding: 12px;
   border: 1px solid var(--border-dark);
@@ -2105,6 +2104,14 @@ footer {
 .right-shape-module .shape-grid { grid-template-columns: repeat(3, 1fr); margin: 0; }
 .right-image-actions { display: grid; gap: 6px; }
 .right-image-actions button { width: 100%; }
+.right-image-actions .danger-action {
+  border-color: #b84532aa;
+  color: var(--danger);
+}
+.right-image-actions .danger-action:hover {
+  border-color: var(--danger);
+  background: #b8453222;
+}
 .preview-size-tools {
   min-width: 0;
   display: grid;
@@ -2114,6 +2121,9 @@ footer {
   border: 1px solid var(--border-dark);
   border-radius: var(--r-md);
   background: var(--bg-workspace-soft);
+}
+.preview-center-column > .preview-adjustments {
+  margin-top: 10px;
 }
 .preview-size-tools > b,
 .preview-shape-selector > b {
