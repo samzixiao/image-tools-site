@@ -25,6 +25,7 @@ type DimensionMarker = {
   id: number;
   value: string;
   unit: "cm" | "in";
+  showDualUnit: boolean;
   position: { x: number; y: number };
   length: number;
   rotation: number;
@@ -52,6 +53,7 @@ type TextLayer = {
   bold: boolean;
   boxWidth: number;
   boxHeight: number;
+  opacity?: number;
 };
 
 function textOutlineShadow(color: string, width: number) {
@@ -615,7 +617,8 @@ function App() {
       return;
     }
     if (shape === "polygon") return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
       x: event.clientX,
       y: event.clientY,
@@ -1224,6 +1227,7 @@ function App() {
   }
   function dimensionLabel(marker: DimensionMarker) {
     const value = Number(marker.value) || 0;
+    if (!marker.showDualUnit) return `${value.toFixed(2)} ${marker.unit}`;
     return marker.unit === "cm"
       ? `${value.toFixed(2)} cm / ${(value / 2.54).toFixed(2)} in`
       : `${value.toFixed(2)} in / ${(value * 2.54).toFixed(2)} cm`;
@@ -1296,6 +1300,7 @@ function App() {
   ) {
     if (!layer.content.trim()) return;
     ctx.save();
+    ctx.globalAlpha = (layer.opacity ?? 100) / 100;
     const size = Math.max(16, (width * layer.size) / 1080);
     ctx.translate(layer.position.x * width, layer.position.y * height);
     ctx.rotate((layer.rotation * Math.PI) / 180);
@@ -1804,6 +1809,7 @@ function App() {
             </div>
           )}
           <small>Select any main, extra, or collage image here. Drag an image directly in the preview to reposition it.</small>
+          <div className="right-image-actions"><button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode((current) => current === "fit" ? "crop" : "fit")} disabled={!url}>{mode === "fit" ? "Return to crop" : "Fit full image"}</button><button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>{url && <button className="danger-action" type="button" onClick={removeBaseImage}>Remove main image</button>}</div>
         </div>
       </div>
     </>
@@ -1832,7 +1838,6 @@ function App() {
         ))}
       </div>
       {shape === "polygon" && <div className="polygon-panel"><b>DIY polygon · {polygonPoints.length}/30 points</b><div><button className={addingPolygonPoint ? "active" : ""} type="button" onClick={() => setAddingPolygonPoint(true)} disabled={polygonPoints.length >= 30}>{addingPolygonPoint ? "Click the preview…" : "＋ Add point"}</button><button type="button" onClick={() => { setPolygonPoints(defaultPolygonPoints); setAddingPolygonPoint(false); }}>Restore</button></div></div>}
-      <div className="right-image-actions"><button type="button" className={mode === "fit" ? "active" : ""} onClick={() => setMode((current) => current === "fit" ? "crop" : "fit")} disabled={!url}>{mode === "fit" ? "Return to crop" : "Fit full image"}</button><button type="button" onClick={resetEdits} disabled={!url}>Reset view</button>{url && <button className="danger-action" type="button" onClick={removeBaseImage}>Remove main image</button>}</div>
     </section>
   );
   const previewUtilityModule = (
@@ -1899,6 +1904,11 @@ function App() {
                 <input type="range" min="12" max="160" value={selectedText.size} onChange={(event) => updateSelectedText({ size: Number(event.target.value) })} />
                 <b>{selectedText.size}px</b>
               </label>
+              <label>
+                Opacity
+                <input type="range" min="10" max="100" value={selectedText.opacity ?? 100} onChange={(event) => updateSelectedText({ opacity: Number(event.target.value) })} />
+                <b>{selectedText.opacity ?? 100}%</b>
+              </label>
               <label className="caption-weight-toggle">
                 <input type="checkbox" checked={selectedText.bold} onChange={(event) => updateSelectedText({ bold: event.target.checked })} /> Bold
               </label>
@@ -1955,23 +1965,6 @@ function App() {
           </label>
         </div>
       </div>
-      <div className="background-tools">
-        <label className="transparent-check">
-          <input
-            type="checkbox"
-            checked={transparentBackground}
-            onChange={(event) => {
-              setTransparentBackground(event.target.checked);
-              if (event.target.checked) setFormat("image/png");
-            }}
-          />{" "}
-          Transparent PNG
-        </label>
-        <button onClick={removeSolidBackground} disabled={!url}>Remove solid background</button>
-        <button onClick={() => originalUrl && setUrl(originalUrl)} disabled={!originalUrl}>Restore original</button>
-        <small>Pure-color removal samples the top-left background. Use PNG for transparency.</small>
-      </div>
-      <button className="reset-all" onClick={resetEdits}>Reset all edits</button>
     </>
   );
   const privacyModule = (
@@ -1999,6 +1992,7 @@ function App() {
         <RangeControl label="Contrast" min={0} max={200} value={activeAdjustments.contrast} onChange={(value) => updateActiveAdjustments({ contrast: value })} />
         <RangeControl label="Saturation" min={0} max={200} value={activeAdjustments.saturation} onChange={(value) => updateActiveAdjustments({ saturation: value })} />
       </div>
+      <div className="adjustment-footer">
       <div className="filter-presets" aria-label="Quick filters">
         <button type="button" onClick={() => updateActiveAdjustments({ grayscale: activeAdjustments.grayscale === 100 ? 0 : 100, sepia: 0, invert: 0 })}>B&W</button>
         <button type="button" onClick={() => updateActiveAdjustments({ sepia: activeAdjustments.sepia === 45 ? 0 : 45, grayscale: 0, invert: 0 })}>Warm</button>
@@ -2006,6 +2000,7 @@ function App() {
         <button type="button" onClick={() => updateActiveAdjustments({ hue: 190, saturation: 110, grayscale: 0, sepia: 0, invert: 0 })}>Cool</button>
       </div>
       <button className="adjustments-reset" type="button" onClick={resetActiveAdjustments}>Reset</button>
+      </div>
     </section>
   );
   return (
@@ -2301,6 +2296,7 @@ function App() {
                       labelFlipX: false,
                       labelFlipY: false,
                       labelVisible: true,
+                      showDualUnit: true,
                     },
                   ]);
                   setSelectedMarkerId(id);
@@ -2336,6 +2332,7 @@ function App() {
                     </div>
                     <small>{dimensionLabel(selectedMarker)}</small>
                   </label>
+                  <label className="measure-dual-toggle"><input type="checkbox" checked={selectedMarker.showDualUnit} onChange={(event) => updateSelectedMarker({ showDualUnit: event.target.checked })} /> Show cm + inch</label>
                   <label>
                     Arrow length <b>{Math.round(selectedMarker.length)}%</b>
                     <input
@@ -2708,6 +2705,7 @@ function App() {
                       }}
                       style={{
                         color: layer.color,
+                        opacity: (layer.opacity ?? 100) / 100,
                         textShadow: textOutlineShadow(layer.strokeColor, layer.strokeWidth),
                         fontSize: `${Math.max(14, layer.size / 2)}px`,
                         left: `${layer.position.x * 100}%`,

@@ -156,6 +156,11 @@ assert.ok(source.indexOf('<div className="preview-bottom-docks">') < source.inde
 assert.ok(source.includes('shapes.filter((item) => item !== "original")'), "The shape chooser must not show the Original option");
 assert.ok(source.indexOf('<div className="left-text-module">{textModule}</div>') < source.indexOf('{privacyModule}'), "Text controls must appear above privacy controls in the left column");
 assert.ok(source.indexOf('{imageLayersModule}') < source.indexOf('n="05"'), "Layers must appear directly below the shape controls before dimension arrows");
+assert.ok(source.includes('showDualUnit: boolean') && source.includes('Show cm + inch'), "Dimension arrows must support optional dual-unit labels");
+assert.ok(source.includes('selectedText.opacity ?? 100') && source.includes('opacity: (layer.opacity ?? 100) / 100'), "Selected text layers must support opacity in preview and export");
+assert.ok(source.includes('event.preventDefault();\n    if (!event.currentTarget.hasPointerCapture'), "Main image dragging must prevent native image drag behavior");
+const activeTextModule = source.slice(source.indexOf('const textModule = ('), source.indexOf('const privacyModule = ('));
+assert.ok(!activeTextModule.includes('Transparent PNG') && !activeTextModule.includes('Reset all edits'), "Transparent-image and reset-all controls must be removed from the active text module");
 assert.ok(styles.includes(".workspace") && styles.includes("grid-template-columns: minmax(0, 1fr) 390px") && styles.includes(".preview-workarea") && styles.includes("grid-template-columns: 318px minmax(0, 1fr)"), "Workspace must retain left, center, and right columns with preview at the center top");
 assert.ok(styles.includes("position: sticky") && styles.includes(".right-image-actions { grid-template-columns: repeat(3"), "Preview controls must stay fixed and image actions must remain on one row");
 assert.ok(styles.includes("grid-template-columns: repeat(5, minmax(0, 1fr))") && styles.includes(".sticker-custom-add"), "Privacy stickers must use the five-column grid with a custom add control");
