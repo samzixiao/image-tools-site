@@ -107,9 +107,13 @@ for (const contract of [
   'const outlineRadius = Math.max(0, (width * layer.strokeWidth) / 1080);',
   'ctx.fillText(item, 0, y, maxWidth);',
   'setSelectedTextId(null);',
-  'const layersModule = (',
+  'const imageLayersModule = (',
+  'const collageModule = (',
   'className="legacy-layers-module"',
   'className="preview-layers-dock"',
+  'className="preview-collage-dock"',
+  'className="preview-zoom-row"',
+  'className={`main-shape-frame ${shape}`}',
 ]) {
   assert.ok(source.includes(contract), `Missing editor contract: ${contract}`);
 }
@@ -133,6 +137,8 @@ assert.ok(styles.includes(".compact-adjustments") && styles.includes(".danger-ac
 assert.ok(styles.includes(".preview-layers-dock") && styles.includes(".legacy-layers-module"), "Layer and collage controls must be docked beside the preview");
 assert.ok(/\.legacy-layers-module\s*\{[^}]*display:\s*none\s*!important;/.test(styles), "The duplicate left layer module must stay hidden");
 assert.ok(!styles.includes("transition: transform 0.2s ease;"), "Image dragging must not be delayed by a transform transition");
+assert.ok(styles.includes(".main-shape-frame") && styles.includes(".preview-zoom-row"), "Shape clipping must be independent from image zoom controls");
+assert.ok(styles.includes(".preview-collage-dock") && styles.includes(".controls .preview-adjustments"), "Collage and light controls must use their assigned layout docks");
 assert.ok(styles.includes(".preview-center-column"), "Preview controls must stay in the center column below the canvas");
 assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\s\S]*?display:\s*none\s*!important;/.test(styles), "The old duplicate text module must stay hidden");
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");

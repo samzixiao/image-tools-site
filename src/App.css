@@ -1970,6 +1970,19 @@ footer {
   padding: 10px 0;
   border-bottom: 1px solid var(--border-dark);
 }
+.preview-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--border-dark);
+}
+.preview-zoom-row .preview-canvas-tools,
+.preview-zoom-row .preview-shape-tools {
+  flex: 1 1 0;
+  min-width: 0;
+  border-bottom: 0;
+}
+.preview-zoom-row .preview-canvas-tools > span { display: none; }
 .preview-canvas-tools > strong {
   color: var(--text-on-dark-muted);
   font: 600 9px var(--font-mono);
@@ -2257,6 +2270,86 @@ footer {
 }
 .preview-shape-tools button:disabled { opacity: 0.35; }
 .preview-shape-tools input { width: 100px; accent-color: var(--accent); height: 4px; }
+.main-shape-frame {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.main-shape-frame .preview-image {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
+}
+.preview-collage-dock {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--r-md);
+  background: var(--bg-workspace-soft);
+}
+.preview-collage-heading { display: grid; gap: 2px; }
+.preview-collage-heading b {
+  color: var(--text-on-dark);
+  font: 600 10px var(--font-mono);
+  letter-spacing: .1em;
+}
+.preview-collage-heading small,
+.preview-collage-dock .layer-section small,
+.preview-collage-dock .layer-controls label {
+  color: var(--text-on-dark-muted);
+}
+.preview-collage-dock .layers-panel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.preview-collage-dock .collage-templates button,
+.preview-collage-dock .layer-list button,
+.preview-collage-dock .layer-controls button {
+  border-color: var(--border-dark);
+  background: var(--bg-workspace);
+  color: var(--text-on-dark-muted);
+}
+.preview-collage-dock .collage-templates button.active,
+.preview-collage-dock .layer-list button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.preview-collage-dock select {
+  border-color: var(--border-dark);
+  background: var(--bg-workspace);
+  color: var(--text-on-dark);
+}
+.controls .preview-adjustments {
+  grid-template-columns: 1fr;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-panel);
+}
+.controls .preview-adjustments .adjustments {
+  background: var(--bg-panel-muted);
+  border-color: var(--border);
+}
+.controls .preview-adjustments .adjustments label,
+.controls .preview-adjustments .adjustments b,
+.controls .adjustment-label b { color: var(--text); }
+.controls .adjustment-label small { color: var(--text-faint); }
+.controls .adjustments-reset {
+  justify-self: start;
+  border-color: var(--border);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+}
 .preview-transform {
   display: flex;
   justify-content: space-between;

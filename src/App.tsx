@@ -1613,7 +1613,6 @@ function App() {
     objectPosition: "center" as const,
     transform: `translate(${imageOffset.x * 100}cqw, ${imageOffset.y * 100}cqw) scale(${zoom}) rotate(${rotation}deg) scaleX(${flipX ? -1 : 1}) scaleY(${flipY ? -1 : 1})`,
     filter: filterValue,
-    ...(shape === "original" ? {} : shapePreviewStyle(shape, shapeScale, polygonPoints)),
   };
   const selectedMarker = dimensionMarkers.find(
     (marker) => marker.id === selectedMarkerId,
@@ -1753,9 +1752,9 @@ function App() {
     setSelectedTextId((current) => current === id ? fallback?.id ?? null : current);
     setEditingTextId((current) => current === id ? null : current);
   }
-  const layersModule = (
+  const imageLayersModule = (
     <>
-      <Step n="01" title="Layers & collage" sub="Stack multiple image layers or build a 2–9 image collage" />
+      <Step n="01" title="Image layers" sub="Stack, reorder, and position extra images" />
       <div className="layers-panel">
         <div className="layer-section">
           <b>Image layers</b>
@@ -1765,7 +1764,6 @@ function App() {
             <div className="layer-list">
               {url && <div className="layer-row"><button className={selectedBaseImage ? "active" : ""} onClick={toggleBaseImage}>Base image · {fileName || "Image"}</button><button className="layer-delete" type="button" aria-label="Delete main image" onClick={removeBaseImage}>×</button></div>}
               {imageLayers.map((layer, index) => <button key={layer.id} className={layer.id === selectedImageLayerId ? "active" : ""} onClick={() => toggleImageLayer(layer.id)}>Layer {index + 1} · {layer.name}</button>)}
-              {collageImages.map((item, index) => <button key={`collage-${item.id}`} className={item.id === selectedCollageImageId ? "active" : ""} onClick={() => toggleCollageImage(item.id)}>Collage {index + 1} · {item.name}</button>)}
             </div>
           )}
           {selectedImageLayer && (
@@ -1778,8 +1776,14 @@ function App() {
           )}
           <small>Add as many images as needed. Drag a layer directly in the preview to reposition it.</small>
         </div>
+      </div>
+    </>
+  );
+  const collageModule = (
+    <section className="preview-collage-dock" aria-label="Collage board">
+      <div className="preview-collage-heading"><b>COLLAGE BOARD</b><small>Build a 2–9 image layout below the preview.</small></div>
+      <div className="layers-panel">
         <div className="layer-section collage-section">
-          <b>Collage board</b>
           <div className="collage-templates">
             {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
           </div>
@@ -1797,7 +1801,7 @@ function App() {
           <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile, then use the preview controls below to zoom and drag it into position.` : "Choose a collage template to start. Click it again to cancel."}</small>
         </div>
       </div>
-    </>
+    </section>
   );
   const textModule = (
     <>
@@ -2061,6 +2065,7 @@ function App() {
             </div>
             </div>
             {textModule}
+            {adjustmentsModule}
             <Step
               n="04"
               title="Privacy cover"
@@ -2593,7 +2598,13 @@ function App() {
                       }}
                     />
                   )}
-                  {url && <img src={url} alt="Preview" className="preview-image" style={previewStyle} />}
+                  {url && (shape === "original" ? (
+                    <img src={url} alt="Preview" className="preview-image" style={previewStyle} />
+                  ) : (
+                    <div className={`main-shape-frame ${shape}`} style={shapePreviewStyle(shape, shapeScale, polygonPoints)}>
+                      <img src={url} alt="Preview" className="preview-image" style={previewStyle} />
+                    </div>
+                  ))}
                   {url && selectedBaseImage && <div className="base-image-selection" aria-label="Selected main image" />}
                   {selectedCollageTemplate?.slots.map((slot, index) => {
                     const item = collageImages.find((entry) => entry.slotIndex === index);
@@ -2853,32 +2864,33 @@ function App() {
                 </label>
               )}
             </div>
-            <div className="preview-canvas-tools" aria-label="Canvas controls">
-              <strong>ZOOM</strong>
-              <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
-              <input
-                type="range"
-                min={activePreviewZoomMinimum}
-                max={activePreviewZoomMaximum}
-                step=".05"
-                value={activePreviewZoom}
-                onChange={(event) => setActivePreviewZoom(Number(event.target.value))}
-                disabled={!url && !selectedCollageImage}
-                aria-label={selectedCollageImage ? "Selected collage tile zoom level" : "Preview zoom level"}
-              />
-              <button onClick={() => setActivePreviewZoom(activePreviewZoom + 0.1)} disabled={!url && !selectedCollageImage}>＋</button>
-              <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
-              <span></span>
-            </div>
-            {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
-              <div className="preview-shape-tools" aria-label="Shape scale controls">
-                <b>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} shape` : "Shape"} scale</b>
-                <button onClick={() => setActiveShapeScale(activeShapeScale - 0.05)} disabled={!canAdjustActiveShape}>−</button>
-                <input type="range" min="0.35" max="1.5" step="0.05" value={activeShapeScale} onChange={(event) => setActiveShapeScale(Number(event.target.value))} disabled={!canAdjustActiveShape} aria-label="Shape scale" />
-                <button onClick={() => setActiveShapeScale(activeShapeScale + 0.05)} disabled={!canAdjustActiveShape}>＋</button>
-                <button onClick={() => setActiveShapeScale(1)} disabled={!canAdjustActiveShape}>{Math.round(activeShapeScale * 100)}%</button>
+            <div className="preview-zoom-row">
+              <div className="preview-canvas-tools" aria-label="Canvas controls">
+                <strong>ZOOM</strong>
+                <button onClick={() => setActivePreviewZoom(activePreviewZoom - 0.1)} disabled={!url && !selectedCollageImage}>−</button>
+                <input
+                  type="range"
+                  min={activePreviewZoomMinimum}
+                  max={activePreviewZoomMaximum}
+                  step=".05"
+                  value={activePreviewZoom}
+                  onChange={(event) => setActivePreviewZoom(Number(event.target.value))}
+                  disabled={!url && !selectedCollageImage}
+                  aria-label={selectedCollageImage ? "Selected collage tile zoom level" : "Preview zoom level"}
+                />
+                <button onClick={() => setActivePreviewZoom(activePreviewZoom + 0.1)} disabled={!url && !selectedCollageImage}>＋</button>
+                <button onClick={resetActivePreviewZoom} disabled={!url && !selectedCollageImage}>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} · ` : ""}{Math.round(activePreviewZoom * 100)}%</button>
               </div>
-            )}
+              {(shape !== "original" || (selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")) && (
+                <div className="preview-shape-tools" aria-label="Shape scale controls">
+                  <b>{selectedCollageImage ? `Tile ${selectedCollageImage.slotIndex + 1} shape` : "Shape"} scale</b>
+                  <button onClick={() => setActiveShapeScale(activeShapeScale - 0.05)} disabled={!canAdjustActiveShape}>−</button>
+                  <input type="range" min="0.35" max="1.5" step="0.05" value={activeShapeScale} onChange={(event) => setActiveShapeScale(Number(event.target.value))} disabled={!canAdjustActiveShape} aria-label="Shape scale" />
+                  <button onClick={() => setActiveShapeScale(activeShapeScale + 0.05)} disabled={!canAdjustActiveShape}>＋</button>
+                  <button onClick={() => setActiveShapeScale(1)} disabled={!canAdjustActiveShape}>{Math.round(activeShapeScale * 100)}%</button>
+                </div>
+              )}
+            </div>
             <div className="preview-foot">
               <span>
                 {url
@@ -2888,7 +2900,7 @@ function App() {
                   : "No image selected"}
               </span>
             </div>
-            {adjustmentsModule}
+            {collageModule}
             <div className="export">
               <label>
                 Format{" "}
@@ -2984,7 +2996,7 @@ function App() {
                 <span>{rotation}°</span>
               </div>
               <div className="preview-layers-dock">
-                {layersModule}
+                {imageLayersModule}
               </div>
               {url && (
                 <button className="danger-action" type="button" onClick={removeBaseImage}>
