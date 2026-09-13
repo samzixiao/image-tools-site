@@ -35,6 +35,8 @@ for (const contract of [
   'className="collage-slot-input"',
   'aria-label={`Upload image to collage tile ${index + 1}`}',
   'prepareCollageUpload(index);',
+  'function addCollageImages(files: FileList | File[], targetSlot?: number)',
+  'addCollageImages(event.target.files ?? [], index);',
   'const activePreviewZoom = selectedCollageImage?.scale ?? zoom;',
   'const activeShapeScale = selectedCollageImage?.shapeScale ?? shapeScale;',
   '(selectedCollageImage !== undefined && selectedCollageImage.shape !== "original")',
@@ -146,6 +148,7 @@ assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text lay
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
+assert.ok(source.includes("const start = targetSlot ?? collageUploadStartRef.current ?? 0;"), "Each collage upload must target its clicked tile explicitly");
 assert.ok(/\.privacy-mask-preview\s*\{[\s\S]*?border:\s*2px solid var\(--accent\);[\s\S]*?background:\s*transparent;/.test(styles), "Mosaic preview must use the module border style without a transparent checker fill");
 
 assert.ok(html.includes("family=Playfair+Display"), "Missing the loaded right-size font");
