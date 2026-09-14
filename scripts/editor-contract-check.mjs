@@ -166,9 +166,10 @@ assert.ok(source.includes('function removeBaseImage()') && source.includes('setB
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf("{adjustmentsModule}") < source.indexOf('<div className="preview-bottom-docks">'), "Collage controls must appear below light controls");
-assert.ok(source.includes('aria-label={`Select ${template.label} collage`}') && source.includes('>{template.slots.length}</button>'), "Collage shortcuts must use compact numbered buttons");
+assert.ok(source.includes('aria-label={`Select ${template.label} collage`}') && source.includes('>{template.slots.length}张拼图</button>'), "Collage shortcuts must explain their image count");
 assert.ok(styles.includes('grid-template-areas: "label value" "slider slider";') && styles.includes('label input { grid-area: slider; width: 100%;'), "Each light adjustment must keep a separate visible slider without overlap");
-assert.ok(styles.includes('grid-template-columns: repeat(8, minmax(0, 1fr));') && styles.includes('border-radius: 50%;'), "All eight collage shortcuts must fit on one row as circles");
+assert.ok(styles.includes('grid-template-columns: repeat(8, minmax(0, 1fr));') && styles.includes('border-radius: 999px;'), "All eight collage shortcuts must fit on one row as compact pills");
+assert.ok(source.includes('const start = Math.min(template.slots.length - 1, Math.max(0, targetSlot ?? collageUploadStartRef.current ?? 0));'), "Collage uploads must clamp their target slot before updating state");
 assert.ok(source.includes('if (event.detail >= 2)') && source.includes('endPointerInteractions();'), "Double-clicking a text layer must enter editing without leaving a drag state");
 assert.ok(source.includes('const isSelected = privacySticker === item') && source.includes('setPrivacySticker(isSelected ? "" : item)'), "Privacy picker buttons must toggle on and off");
 assert.ok(source.includes('activeMarkerPart') && source.includes('measure-quick-controls'), "Dimension arrows and labels must use compact context-sensitive controls");
@@ -193,7 +194,7 @@ assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text lay
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
-assert.ok(source.includes("const start = targetSlot ?? collageUploadStartRef.current ?? 0;"), "Each collage upload must target its clicked tile explicitly");
+assert.ok(source.includes("const start = Math.min(template.slots.length - 1, Math.max(0, targetSlot ?? collageUploadStartRef.current ?? 0));"), "Each collage upload must target its clicked tile explicitly and safely");
 assert.ok(styles.includes(".main-crop-frame") && styles.includes(".right-shape-module"), "Committed crop and right-side editor controls must retain their layout styles");
 assert.ok(/\.privacy-mask-preview\s*\{[\s\S]*?border:\s*2px solid var\(--accent\);[\s\S]*?background:\s*transparent;/.test(styles), "Mosaic preview must use the module border style without a transparent checker fill");
 
