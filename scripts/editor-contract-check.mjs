@@ -193,6 +193,7 @@ assert.ok(styles.includes(".legacy-text-module") && /\.legacy-text-module\s*\{[\
 assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text layers must stay above filled collage tiles");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
+assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?background:\s*#1a1c1a;/.test(styles), "Empty collage upload tiles must match the dark main preview background");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
 assert.ok(styles.includes('.collage-tile:has(.collage-shape-frame:not(.original))') && styles.includes('background: #1a1c1a;'), "Shape-cropped collage tiles must keep the dark preview background");
 assert.ok(source.includes("const start = Math.min(template.slots.length - 1, Math.max(0, targetSlot ?? collageUploadStartRef.current ?? 0));"), "Each collage upload must target its clicked tile explicitly and safely");

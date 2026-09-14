@@ -1494,9 +1494,9 @@ footer {
   z-index: 3;
   display: grid;
   place-items: center;
-  border: 2px dashed #b7bdb5;
-  background: #f4f5f2;
-  color: #9aa198;
+  border: 2px dashed #5b645d;
+  background: #1a1c1a;
+  color: #d5dbd2;
   font-size: clamp(16px, 6cqw, 34px);
   pointer-events: auto;
   cursor: pointer;
