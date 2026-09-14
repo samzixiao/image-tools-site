@@ -1893,7 +1893,7 @@ function App() {
       <div className="layers-panel">
         <div className="layer-section collage-section">
           <div className="collage-templates">
-            {collageTemplates.map((template) => <button key={template.id} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.label}</button>)}
+            {collageTemplates.map((template) => <button key={template.id} type="button" title={template.label} aria-label={`Select ${template.label} collage`} className={template.id === collageTemplateId ? "active" : ""} onClick={() => { const isCancel = template.id === collageTemplateId; setCollageTemplateId(isCancel ? null : template.id); collageUploadStartRef.current = null; setCollageUploadStart(null); setSelectedCollageImageId(null); setSelectedBaseImage(false); if (!isCancel) setCollageImages((current) => current.filter((item) => item.slotIndex < template.slots.length)); }}>{template.slots.length}</button>)}
           </div>
           <small>{selectedCollageTemplate ? `${selectedCollageTemplate.slots.length} slots · click an empty tile in the preview to add images one by one. Select a tile from All layers to edit it.` : "Choose a collage template to start. Click it again to cancel."}</small>
         </div>

@@ -166,6 +166,9 @@ assert.ok(source.includes('function removeBaseImage()') && source.includes('setB
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf("{adjustmentsModule}") < source.indexOf('<div className="preview-bottom-docks">'), "Collage controls must appear below light controls");
+assert.ok(source.includes('aria-label={`Select ${template.label} collage`}') && source.includes('>{template.slots.length}</button>'), "Collage shortcuts must use compact numbered buttons");
+assert.ok(styles.includes('grid-template-areas: "label value" "slider slider";') && styles.includes('label input { grid-area: slider; width: 100%;'), "Each light adjustment must keep a separate visible slider without overlap");
+assert.ok(styles.includes('grid-template-columns: repeat(8, minmax(0, 1fr));') && styles.includes('border-radius: 50%;'), "All eight collage shortcuts must fit on one row as circles");
 assert.ok(source.includes('if (event.detail >= 2)') && source.includes('endPointerInteractions();'), "Double-clicking a text layer must enter editing without leaving a drag state");
 assert.ok(source.includes('const isSelected = privacySticker === item') && source.includes('setPrivacySticker(isSelected ? "" : item)'), "Privacy picker buttons must toggle on and off");
 assert.ok(source.includes('activeMarkerPart') && source.includes('measure-quick-controls'), "Dimension arrows and labels must use compact context-sensitive controls");

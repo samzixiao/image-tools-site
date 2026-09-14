@@ -3296,14 +3296,39 @@ footer {
 }
 .preview-collage-dock { padding: 12px 14px; }
 .preview-collage-heading { display: flex; align-items: baseline; gap: 8px; }
-.preview-collage-dock .collage-templates { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
-.preview-collage-dock .collage-templates button { min-width: 0; padding: 8px 4px; font-size: 13px; }
+.preview-collage-dock .collage-templates {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.preview-collage-dock .collage-templates button {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 32px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+}
 .preview-center-column > .preview-adjustments { margin-top: 8px; }
 .preview-adjustments { padding: 8px 10px; }
-.preview-adjustments .compact-adjustments { gap: 6px; }
-.preview-adjustments .compact-adjustments { grid-template-columns: minmax(0, .8fr) minmax(0, 1.45fr) minmax(0, .8fr); }
-.preview-adjustments .compact-adjustments label:nth-child(2) { grid-template-columns: 1fr 34px; }
-.preview-adjustments .compact-adjustments label:nth-child(2) input { width: 100%; }
+.preview-adjustments .compact-adjustments {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.preview-adjustments .compact-adjustments label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label value" "slider slider";
+  gap: 5px 8px;
+  min-width: 0;
+}
+.preview-adjustments .compact-adjustments label span { grid-area: label; min-width: 0; }
+.preview-adjustments .compact-adjustments label b { grid-area: value; min-width: 2.5ch; text-align: right; }
+.preview-adjustments .compact-adjustments label input { grid-area: slider; width: 100%; min-width: 0; }
 .adjustment-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
 .adjustment-footer .filter-presets { margin: 0; }
 .adjustment-footer .adjustments-reset { justify-self: end; margin: 0; }
