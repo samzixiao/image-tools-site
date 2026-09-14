@@ -166,7 +166,7 @@ assert.ok(source.includes('function removeBaseImage()') && source.includes('setB
 assert.ok(source.indexOf("{previewUtilityModule}") < source.indexOf('<div className="preview-zoom-row">'), "Output pixels must appear before zoom controls");
 assert.ok(source.indexOf('<div className="preview-zoom-row">') < source.indexOf('<div className="preview-transform"'), "Zoom controls must appear before transform controls");
 assert.ok(source.indexOf("{adjustmentsModule}") < source.indexOf('<div className="preview-bottom-docks">'), "Collage controls must appear below light controls");
-assert.ok(source.includes('aria-label={`Select ${template.label} collage`}') && source.includes('>{template.slots.length}张拼图</button>'), "Collage shortcuts must explain their image count");
+assert.ok(source.includes('aria-label={`Select ${template.label} collage`}') && source.includes('>{template.slots.length} photos</button>'), "Collage shortcuts must explain their image count in English");
 assert.ok(styles.includes('grid-template-areas: "label value" "slider slider";') && styles.includes('label input { grid-area: slider; width: 100%;'), "Each light adjustment must keep a separate visible slider without overlap");
 assert.ok(styles.includes('grid-template-columns: repeat(8, minmax(0, 1fr));') && styles.includes('border-radius: 999px;'), "All eight collage shortcuts must fit on one row as compact pills");
 assert.ok(source.includes('const start = Math.min(template.slots.length - 1, Math.max(0, targetSlot ?? collageUploadStartRef.current ?? 0));'), "Collage uploads must clamp their target slot before updating state");
