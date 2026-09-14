@@ -194,6 +194,7 @@ assert.ok(/\.caption-overlay\s*\{[\s\S]*?z-index:\s*40;/.test(styles), "Text lay
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?pointer-events:\s*auto;/.test(styles), "The whole empty collage tile must accept uploads");
 assert.ok(/\.collage-tile\.empty\s*\{[\s\S]*?z-index:\s*3;/.test(styles), "Empty collage tiles must stay below editable overlays");
 assert.ok(/\.collage-slot-input\s*\{[\s\S]*?inset:\s*-2px;[\s\S]*?width:\s*calc\(100% \+ 4px\);[\s\S]*?height:\s*calc\(100% \+ 4px\);/.test(styles), "The collage upload input must cover the whole tile including its border");
+assert.ok(styles.includes('.collage-tile:has(.collage-shape-frame:not(.original))') && styles.includes('background: #1a1c1a;'), "Shape-cropped collage tiles must keep the dark preview background");
 assert.ok(source.includes("const start = Math.min(template.slots.length - 1, Math.max(0, targetSlot ?? collageUploadStartRef.current ?? 0));"), "Each collage upload must target its clicked tile explicitly and safely");
 assert.ok(styles.includes(".main-crop-frame") && styles.includes(".right-shape-module"), "Committed crop and right-side editor controls must retain their layout styles");
 assert.ok(/\.privacy-mask-preview\s*\{[\s\S]*?border:\s*2px solid var\(--accent\);[\s\S]*?background:\s*transparent;/.test(styles), "Mosaic preview must use the module border style without a transparent checker fill");

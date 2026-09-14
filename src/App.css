@@ -1430,6 +1430,10 @@ footer {
 }
 .collage-tile.selected { outline: 2px solid #e77967; outline-offset: -2px; }
 .collage-shape-frame { position: absolute; inset: 0; overflow: hidden; }
+.collage-tile:has(.collage-shape-frame:not(.original)) {
+  background: #1a1c1a;
+  border-color: #3c423d;
+}
 .collage-shape-frame.heart {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='black' d='M50 92C0 62 0 22 22 12C36 5.5 47 15 50 26C53 15 64 5.5 78 12C100 22 100 62 50 92Z'/%3E%3C/svg%3E");
   -webkit-mask-size: 100% 100%;
